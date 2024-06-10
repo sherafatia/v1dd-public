@@ -8,12 +8,11 @@ import numpy as np
 from tqdm.notebook import tqdm, trange
 from pathlib import Path
 from allen_v1dd.client import OPhysClient
-from abbasilab_v1dd.locally_sparse_noise.rf_ns_utils import compute_rf_ns_metrics_for_col_vol_plane
+from abbasilab_v1dd.locally_sparse_noise.utils import compute_lsn_ns_metrics_for_col_vol_plane
 from abbasilab_v1dd import ARTIFACT_DIR
 import h5py
 import warnings
 warnings.filterwarnings('ignore')
-
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ def compute_metrics_for_all_mice(analysis_name: str,
                                 nwb_file_paths=nwb_file_paths, 
                                 start_idx=start_idx)
             
-    all_metrics = Parallel(n_jobs=n_jobs, verbose=1)(delayed(compute_rf_ns_metrics_for_col_vol_plane)(client, d["mouse_id"], d["col_vol_id"], d["plane"]) for d in data)
+    all_metrics = Parallel(n_jobs=n_jobs, verbose=1)(delayed(compute_lsn_ns_metrics_for_col_vol_plane)(client, d["mouse_id"], d["col_vol_id"], d["plane"]) for d in data)
     logger.info(f"Done computing {len(all_metrics)} metrics.")
     
     h5_name = save_data_to_h5_file(all_metrics, analysis_name)

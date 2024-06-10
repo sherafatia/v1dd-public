@@ -44,17 +44,17 @@ def make_sample_spontanous(n_cells,
                            rng,
                            sample_spontaneous: int = 1000) -> np.ndarray:
     
-    # define a sample of 1000 df/f values for the spontaneous activity
-    spont_vals = np.zeros([n_cells, sample_spontaneous]) # initialize the sample of spontaneous values
+    # define a sample of 1000 df/f values for the spontaneous activity for locally sparse noise stimulus
+    spont_vals = np.zeros([n_cells, sample_spontaneous])
     spont_start_time = lsn.spont_stim_table['start'][0]
     spont_end_time = lsn.spont_stim_table['end'][0]
     spont_start_end_times = np.where(np.logical_and(spont_start_time <= times, times <= spont_end_time))[0]
     lsn_pres_len = np.ceil(tot_lsn_frames/n_tot_pres).astype(int)
     
     spont_times = spont_start_end_times[:-lsn_pres_len]
-    spont_idxs = rng.choice(spont_times, sample_spontaneous) # not sure why roozbeh sliced this like this, nevertheless it gives 1000 random samples
+    spont_idxs = rng.choice(spont_times, sample_spontaneous)
     for s in range(sample_spontaneous):
-        spont_vals[:, s] = dff[:, spont_idxs[s]:spont_idxs[s]+lsn_pres_len].mean(axis = 1) # (example length_observation was 3170)
+        spont_vals[:, s] = dff[:, spont_idxs[s]:spont_idxs[s]+lsn_pres_len].mean(axis = 1)
         
     return spont_vals
 
@@ -67,17 +67,17 @@ def make_sample_spontanous_ns(n_cells,
                            rng,
                            sample_spontaneous: int = 1000) -> np.ndarray:
     
-    # define a sample of 1000 df/f values for the spontaneous activity
-    spont_vals = np.zeros([n_cells, sample_spontaneous]) # initialize the sample of spontaneous values
+    # define a sample of 1000 df/f values for the spontaneous activity for natural scenes
+    spont_vals = np.zeros([n_cells, sample_spontaneous])
     spont_start_time = ns.spont_stim_table['start'][0]
     spont_end_time = ns.spont_stim_table['end'][0]
     spont_start_end_times = np.where(np.logical_and(spont_start_time <= times, times <= spont_end_time))[0]
     ns_pres_len = np.ceil(tot_ns_frames/n_tot_ns_pres).astype(int)
     
     spont_times = spont_start_end_times[:-ns_pres_len]
-    spont_idxs = rng.choice(spont_times, sample_spontaneous) # not sure why roozbeh sliced this like this, nevertheless it gives 1000 random samples
+    spont_idxs = rng.choice(spont_times, sample_spontaneous)
     for s in range(sample_spontaneous):
-        spont_vals[:, s] = dff[:, spont_idxs[s]:spont_idxs[s]+ns_pres_len].mean(axis = 1) # (example length_observation was 3170)
+        spont_vals[:, s] = dff[:, spont_idxs[s]:spont_idxs[s]+ns_pres_len].mean(axis = 1)
         
     return spont_vals
 
@@ -97,37 +97,16 @@ def calc_lsn_vals(lsn,
     n_cells = dff.shape[0]
     cell_indices = np.nonzero(lsn.is_roi_valid)[0]
     
-    # iterate through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation
-    lsn_vals = np.zeros([n_tot_pres, n_cells]) # initialize the sample of lsn values
+    lsn_vals = np.zeros([n_tot_pres, n_cells])
     tot_lsn_frames = 0
     for cell in range(n_cells):
         tot_lsn_frames = 0
         for t in range(n_tot_pres):
-            
-            # version 1
-            # lsn_start_time = lsn.stim_table.start[t] # 631.9549
-            # lsn_end_time = lsn.stim_table.end[t] # 632.2551
-            # lsn_start_end_idxs = np.where(np.logical_and(lsn_start_time <= times, times <= lsn_end_time))[0] # array([3850, 3851])
-            # if len(lsn_start_end_idxs) == 0:
-            #     lsn_val = 0
-            # else:
-            #     lsn_val = dff[cell, onset_delay + np.min(lsn_start_end_idxs): onset_delay + np.max(lsn_start_end_idxs) + offset_delay].mean(axis=0) # interval selected: (3851, 3853)
-            
-            
-            # version 2
-            # trial_start = lsn.stim_table.start[t]+onset_delay
-            # trial_end = lsn.stim_table.end[t]+onset_delay+offset_delay      
-            # time_mask = (times > trial_start) & (times < trial_end)
-            # lsn_start_end_idxs = time_mask.nonzero()
-            # if len(lsn_start_end_idxs) == 0:
-            #     lsn_val = 0
-            # else:
-            #     lsn_val = dff[cell, time_mask].mean(axis=0) # interval selected: (3851, 3853)
 
-            lsn_start_time = lsn.stim_table.start[t] # 631.9549
-            lsn_end_time = lsn.stim_table.end[t] # 632.2551
+            lsn_start_time = lsn.stim_table.start[t]
+            lsn_end_time = lsn.stim_table.end[t]
             lsn_start_end_idxs = np.where(np.logical_and(lsn_start_time <= times, \
-                times <= lsn_end_time))[0] # array([3850, 3851])
+                times <= lsn_end_time))[0]
             
             if len(lsn_start_end_idxs) == 0:
                 lsn_val = 0
@@ -146,7 +125,7 @@ def calc_ns12_vals(ns,
                 offset_delay: float = 2,
                 trace_type: str = "events"): 
     
-    # iterates through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation (i.e. mean sweep response
+    # iterates through the run and calculate the mean dff for each ns presentation from start to the end of the presentation (i.e. mean sweep response
     # )
     stim_table = session.get_stimulus_table("natural_images_12")
     stim_table_df = stim_table[0]
@@ -155,14 +134,12 @@ def calc_ns12_vals(ns,
     n_repeats = n_tot_pres/n_images
    
     traces = session.get_traces(plane, trace_type=trace_type)
-    # n_tot_pres = ns.sweep_responses.shape[0]
     times = traces.indexes['time']
     dff = traces.values[ns.is_roi_valid, :]
     n_cells = dff.shape[0]
     cell_indices = np.nonzero(ns.is_roi_valid)[0]
     
-    # iterate through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation
-    ns12_vals = np.zeros([n_tot_pres, n_cells]) # initialize the sample of lsn values
+    ns12_vals = np.zeros([n_tot_pres, n_cells])
     tot_ns_frames = 0
     for cell in range(n_cells):
         tot_ns_frames = 0
@@ -171,18 +148,18 @@ def calc_ns12_vals(ns,
             ns_start_time = stim_table_df.iloc[t]['start']
             ns_end_time = stim_table_df.iloc[t]['end']
             ns_start_end_idxs = np.where(np.logical_and(ns_start_time <= times, \
-                times <= ns_end_time))[0] # array([3850, 3851])
+                times <= ns_end_time))[0]
             
             if len(ns_start_end_idxs) == 0:
                 ns_val = 0
             else:
                 ns_val = dff[cell, onset_delay + np.min(ns_start_end_idxs): \
-                    onset_delay + np.max(ns_start_end_idxs) + offset_delay].mean(axis=0) # interval selected: (3851, 3853)
+                    onset_delay + np.max(ns_start_end_idxs) + offset_delay].mean(axis=0)
             
             ns12_vals[t, cell] = np.maximum(ns_val, 0)
-            tot_ns_frames += len(ns_start_end_idxs) # this is redundant and equal for every cell, fix later
+            tot_ns_frames += len(ns_start_end_idxs)
             
-    return ns12_vals, tot_ns_frames#, cell_indices, n_repeats
+    return ns12_vals, tot_ns_frames
 
 def calc_ns118_vals(ns,
                 session,
@@ -191,7 +168,7 @@ def calc_ns118_vals(ns,
                 offset_delay: float = 2,
                 trace_type: str = "events"): 
     
-    # iterates through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation (i.e. mean sweep response
+    # iterates through the run and calculate the mean dff for each ns presentation from start to the end of the presentation (i.e. mean sweep response
     # )
     stim_table = session.get_stimulus_table("natural_images")
     stim_table_df = stim_table[0]
@@ -200,14 +177,12 @@ def calc_ns118_vals(ns,
     n_repeats = n_tot_pres/n_images
     
     traces = session.get_traces(plane, trace_type=trace_type)
-    # n_tot_pres = ns.sweep_responses.shape[0]
     times = traces.indexes['time']
     dff = traces.values[ns.is_roi_valid, :]
     n_cells = dff.shape[0]
     cell_indices = np.nonzero(ns.is_roi_valid)[0]
     
-    # iterate through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation
-    ns118_vals = np.zeros([n_tot_pres, n_cells]) # initialize the sample of lsn values
+    ns118_vals = np.zeros([n_tot_pres, n_cells])
     tot_ns_frames = 0
     for cell in range(n_cells):
         tot_ns_frames = 0
@@ -216,7 +191,7 @@ def calc_ns118_vals(ns,
             ns_start_time = stim_table_df.iloc[t]['start']
             ns_end_time = stim_table_df.iloc[t]['end']
             ns_start_end_idxs = np.where(np.logical_and(ns_start_time <= times, \
-                times <= ns_end_time))[0] # array([3850, 3851])
+                times <= ns_end_time))[0]
             
             if len(ns_start_end_idxs) == 0:
                 ns_val = 0
@@ -225,8 +200,8 @@ def calc_ns118_vals(ns,
                     onset_delay + np.max(ns_start_end_idxs) + offset_delay].mean(axis=0) # interval selected: (3851, 3853)
             
             ns118_vals[t, cell] = np.maximum(ns_val, 0)
-            tot_ns_frames += len(ns_start_end_idxs) # this is redundant and equal for every cell, fix later
-    return ns118_vals, tot_ns_frames#, cell_indices, n_repeats
+            tot_ns_frames += len(ns_start_end_idxs)
+    return ns118_vals, tot_ns_frames
 
 def calc_pvals_for_plane_using_zscore_one_tailed(lsn,
                          session,
@@ -240,13 +215,11 @@ def calc_pvals_for_plane_using_zscore_one_tailed(lsn,
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
 
-    # Identify responsive trials.
     n_tot_pres = lsn.sweep_responses.shape[0]
     times = traces.indexes['time']
     dff = traces.values[lsn.is_roi_valid, :]
     n_cells = dff.shape[0]
-                
-    # define a sample of 1000 df/f values for the spontaneous activity
+
     spont_vals = make_sample_spontanous(n_cells,
                            lsn,
                            times,
@@ -282,7 +255,6 @@ def calc_ns12_pvals_for_plane_using_zscore_one_tailed(ns12,
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
 
-    # Identify responsive trials.
     stim_table = session.get_stimulus_table("natural_images_12")
     stim_table_df = stim_table[0]
     n_tot_pres = len(stim_table_df)
@@ -311,7 +283,6 @@ def calc_ns12_pvals_for_plane_using_zscore_one_tailed(ns12,
         z_vals[:, cell] = (ns12_vals[:, cell] - spont_mean)/spont_std
         p_vals [:, cell] = stats.norm.sf(abs(z_vals[:, cell])) #one-sided
  
-
     return p_vals, spont_vals
 
 def calc_ns118_pvals_for_plane_using_zscore_one_tailed(ns118,
@@ -326,7 +297,7 @@ def calc_ns118_pvals_for_plane_using_zscore_one_tailed(ns118,
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
 
-    # Identify responsive trials.
+    # Identify responsive trials
     stim_table = session.get_stimulus_table("natural_images")
     stim_table_df = stim_table[0]
     n_tot_pres = len(stim_table_df)
@@ -415,7 +386,7 @@ def cell_has_rf(weighted_avg, nstd = 3):
 
 def cell_has_rf_v2(n_responsive_trials, weighted_avg, min_responsive_trials = 6, nstd = 3):
     """
-    This function determines if a cell is responsive to the LSN or not
+    This function determines if a cell has ON or OFF RF or not
     """
     subfield_responsive_trials = n_responsive_trials
     mean_responsive_trials = subfield_responsive_trials.mean()
@@ -609,10 +580,7 @@ def training_loop(model,
     x = torch.from_numpy(np.indices(dim))
     for i in range(n_training):
         preds = model(x, f_type=f_type)
-        # first implentation
-        #s = max(torch.abs(preds - y))
-        #loss = F.mse_loss(s, torch.tensor([0.0])) + balance_weight* F.mse_loss(preds, y).sqrt()
-        
+
         # second implentation
         diff = torch.abs(preds - y)
         m = nn.MaxPool1d((x[0].shape[0]*x[0].shape[1]))
@@ -959,12 +927,15 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
     }
 
     if lsn.n_rois_valid > 1:
-        n_valid_cells_in_colvol_plane = lsn.n_rois_valid # all_pvals_in_colvol_plane.shape[1]
+        n_valid_cells_in_colvol_plane = lsn.n_rois_valid
         n_trials = all_pvals_in_colvol_plane.shape[0]
         
         # initialization
-        
         valid_cell_index = np.zeros(n_valid_cells_in_colvol_plane, dtype = int) 
+        on_center_x_orig = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
+        on_center_y_orig = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
+        off_center_x_orig = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
+        off_center_y_orig = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
         on_center_x = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
         on_center_y = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
         on_center_h = np.zeros(n_valid_cells_in_colvol_plane, dtype = float)
@@ -1090,11 +1061,6 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
             
             has_rf_chi2[cell] = chi2_mat_thresholded[cell, :, :].sum().astype(bool)
 
-            # on analysis
-            # total_on_trials = total_on_off_trials[:number_of_pixels].sum()
-            # n_resp_on_trials = n_responsive_trials[cell, :number_of_pixels].sum()
-            # frac_res_to_on[cell] = n_resp_on_trials / total_on_trials
-
             n_responsive_trials_on[cell, :, :] = n_responsive_trials[cell, :number_of_pixels].reshape(s1, s2)
             total_on_trials = total_on_off_trials[:number_of_pixels].reshape(s1, s2)
             frac_res_to_on[cell] = (n_responsive_trials_on[cell, :, :] / total_on_trials).max()
@@ -1114,11 +1080,10 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
             z_score_mat_on[cell, :, :], has_rf_zscore_on[cell] = rf_z_test(weighted_avg_on[cell, :]);
             on_averaged_response_at_receptive_field[cell] = weighted_avg_on[cell, :, :].max()
             
-            # gauss_input = z_score_mat_on[cell, :, :] > 2.5
-            # gauss_input_argmax = np.where(gauss_input == gauss_input.max())
-            # x_initial = gauss_input_argmax[0]
-            # y_initial = gauss_input_argmax[1]
             x_initial, y_initial, gauss_input = find_rf_center_v2(n_responsive_trials_on[cell, :], weighted_avg_on[cell, :])
+            on_center_x_orig[cell] = x_initial
+            on_center_y_orig[cell] = y_initial
+            
             h_initial = gauss_input.max()
             on_angle_deg = assign_angle(gauss_input, x_initial, y_initial)
 
@@ -1134,13 +1099,6 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
             on_angle_degree[cell] = on_angle_deg           
             on_area[cell] = np.pi * on_center_wx[cell] * on_center_wy[cell]
             has_on_rf [cell] = (on_center_wx[cell] < 5) and (on_center_wy[cell] < 5) and h_initial > 2.5
-            
-            # FIX ME: if wx or wy is > 4 means it did not converge. Find solution.
-
-            # off analysis
-            # total_off_trials = total_on_off_trials[number_of_pixels:].sum()
-            # n_resp_off_trials = n_responsive_trials[cell, number_of_pixels:].sum()
-            # frac_res_to_off[cell] = n_resp_off_trials / total_off_trials
             
             n_responsive_trials_off[cell, :, :] = n_responsive_trials[cell, number_of_pixels:].reshape(s1, s2)
             total_off_trials = total_on_off_trials[number_of_pixels:].reshape(s1, s2)
@@ -1161,13 +1119,11 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
             z_score_mat_off[cell, :, :], has_rf_zscore_off[cell] = rf_z_test(weighted_avg_off[cell, :]);
             
             off_averaged_response_at_receptive_field[cell] = weighted_avg_off[cell, :, :].max()
-            
-            
-            # gauss_input = z_score_mat_off[cell, :, :] > 2.5
-            # gauss_input_argmax = np.where(gauss_input == gauss_input.max())
-            # x_initial = gauss_input_argmax[0]
-            # y_initial = gauss_input_argmax[1]
+
             x_initial, y_initial, gauss_input = find_rf_center_v2(n_responsive_trials_off[cell, :], weighted_avg_off[cell, :])
+            off_center_x_orig[cell] = x_initial
+            off_center_y_orig[cell] = y_initial
+            
             h_initial = gauss_input.max()
             off_angle_deg = assign_angle(gauss_input, x_initial, y_initial)
 
@@ -1183,7 +1139,6 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
            
             off_area[cell] = np.pi * off_center_wx[cell] * off_center_wy[cell]
             has_on_rf [cell] = (off_center_wx[cell] < 5) and (off_center_wy[cell] < 5) and h_initial > 2.5 
-            # FIX ME: if wx or wy is > 4 means it did not converge. Find solution
         
         rf_metrics["data"] = {
                 "sig_on_frames":sig_on_frames,
