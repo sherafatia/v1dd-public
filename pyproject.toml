@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "v1dd-public"
+version = "0.1.0"
+description = "V1DD dataset analysis tool"
+authors = ["Arefeh Sherafati <arefesherafati@gmail.com>"]
+readme = "README.md"
+packages = [{include = "v1dd_public"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+allen-v1dd = {git = "ssh://git@github.com/AllenInstitute/allen_v1dd.git", rev = "90fc74cc61e99e96d7cfee8909def1736b1ece75"}
+pandas = "=1.4"
+scipy = "^1.10.1"
+numpy = "=1.23.0"
+xarray = "^2023.3.0"
+statsmodels = "^0.13.5"
+scikit-image = "^0.20.0"
+matplotlib = "^3.7.1"
+seaborn = "^0.12.2"
+h5py = "^3.8.0"
+tqdm = "^4.65.0"
+ipywidgets = "7.7.2"
+caveclient = "^5.2.1"
+standard-transform = "^1.2.0"
+nglui = "^2.13.0"
+llvmlite = "=0.39.1"
+numba = "=0.56.4"
+pcg-skel = "=0.3.1"
+meshparty = "=1.16.9"
+torch = "^2.0.1"
+joblib = "^1.3.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
