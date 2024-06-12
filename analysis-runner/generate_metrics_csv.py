@@ -116,7 +116,7 @@ def make_csv_from_h5(mouse_ids: list[str],
         mouse_rf_df = pd.DataFrame(key_name_to_vals)
         
         mouse_cre = MOUSE_ID_TO_MOUSE_CRE[mouse_id]
-        csv_path = csv_dir / f'{mouse_cre}_{h5_tag}_all_fields.csv'
+        csv_path = csv_dir / f'{mouse_cre}_{h5_tag}_lsn_ns_metrics.csv'
         mouse_rf_df.to_csv(csv_path)
         logger.info(f"Created CSV {csv_path}")
 
