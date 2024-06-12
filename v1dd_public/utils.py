@@ -7,7 +7,9 @@ from allen_v1dd.client.ophys_session import OPhysSession
 from allen_v1dd.stimulus_analysis import LocallySparseNoise
 from allen_v1dd.stimulus_analysis.natural_scenes import NaturalScenes
 
-from abbasilab_v1dd.locally_sparse_noise.chi_square_continuous import *
+from v1dd_public.chi_square_continuous import chi_square_RFs
+
+
 rng = np.random.default_rng(1)
 from torch.functional import F
 import torch
@@ -648,7 +650,6 @@ def centroid(data,
     params =  (center_x.detach().numpy(), center_y.detach().numpy(), height.detach().numpy(), 
                np.abs(width_x.detach().numpy()), np.abs(width_y.detach().numpy()), angle.detach().numpy())
     
-    print(return_loss)
     if return_loss:
         return params, losses, training_params, m
     else:
@@ -844,7 +845,7 @@ def get_plane_lsn_constants(session: OPhysSession,
     return design_matrix, lsn.trial_template, lsn.frame_images
 
 
-def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient, 
+def compute_lsn_ns_metrics_for_col_vol_plane(client: OPhysClient, 
                         mouse_id: str, 
                         col_vol_id: str,
                         plane: int,
@@ -1192,6 +1193,10 @@ def compute_rf_ns_metrics_for_col_vol_plane(client: OPhysClient,
                 "2p3p": all2p3ps,
                 "on_score": max_n_responsive_trials_on,
                 "off_score": max_n_responsive_trials_off,
+                "on_center_x_orig": on_center_x_orig,
+                "on_center_y_orig": on_center_y_orig,
+                "off_center_x_orig": off_center_x_orig,
+                "off_center_y_orig": off_center_y_orig,
                 "on_center_x": on_center_x,
                 "on_center_y": on_center_y,
                 "on_center_h": on_center_h,
