@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import logging
 from pathlib import Path
 import pandas as pd
-from abbasilab_v1dd import ARTIFACT_DIR
+from v1dd_public import ARTIFACT_DIR
 import h5py
 import numpy as np
 logger = logging.getLogger(__name__)

@@ -5,13 +5,14 @@ import time
 from typing import List, Optional
 from joblib import Parallel, delayed
 import numpy as np
-from tqdm.notebook import tqdm, trange
+from tqdm.notebook import tqdm
 from pathlib import Path
 from allen_v1dd.client import OPhysClient
-from abbasilab_v1dd.locally_sparse_noise.utils import compute_lsn_ns_metrics_for_col_vol_plane
-from abbasilab_v1dd import ARTIFACT_DIR
+from v1dd_public import ARTIFACT_DIR
 import h5py
 import warnings
+
+from v1dd_public.utils import compute_lsn_ns_metrics_for_col_vol_plane
 warnings.filterwarnings('ignore')
 
 
