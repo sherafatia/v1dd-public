@@ -18,18 +18,31 @@ from torch import nn
 
 def is_cell_responsive(n_responsive_trials, weighted_avg, min_responsive_trials = 7, nstd = 3):
     """
-    This function determines if a cell is responsive to the LSN or not
+    Determines if a cell is responsive to the Locally Sparse Noise (LSN) stimulus.
+    
+    Args:
+        n_responsive_trials (np.ndarray): Array of responsive trials.
+        weighted_avg (np.ndarray): Weighted average of all trials.
+        min_responsive_trials (int): Minimum number of responsive trials.
+        nstd (int): Number of standard deviations for the threshold.
+    
+    Returns:
+        bool: True if the cell is responsive, False otherwise.
     """
+
+    # Calculate statistics for responsive trials
     subfield_responsive_trials = n_responsive_trials
     mean_responsive_trials = subfield_responsive_trials.mean()
     std_responsive_trials = subfield_responsive_trials.std()
     max_value_responsive_trials = subfield_responsive_trials.max()
-   
+
+    # Calculate statistics for weighted average response
     subfield_all_trials = weighted_avg
     mean_all_trials = subfield_all_trials.mean()
     std_all_trials = subfield_all_trials.std()
     max_value_all_trials = subfield_all_trials.max()
-   
+
+    # Check if the cell is responsive based on thresholds
     if max_value_responsive_trials >= min_responsive_trials and \
     max_value_responsive_trials >=  mean_responsive_trials + nstd*std_responsive_trials and \
     max_value_all_trials >=  mean_all_trials + nstd*std_all_trials:
@@ -46,7 +59,22 @@ def make_sample_spontanous(n_cells,
                            rng,
                            sample_spontaneous: int = 1000) -> np.ndarray:
     
-    # define a sample of 1000 df/f values for the spontaneous activity for locally sparse noise stimulus
+    """
+    Generate a sample of spontaneous activity for the Locally Sparse Noise (LSN) stimulus.
+    
+    Args:
+        n_cells (int): Number of cells.
+        lsn (LocallySparseNoise): LSN stimulus object.
+        times (np.ndarray): Array of time points.
+        dff (np.ndarray): df/f values.
+        tot_lsn_frames (int): Total number of LSN frames.
+        n_tot_pres (int): Total number of presentations.
+        rng (np.random.Generator): Random number generator.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+    
+    Returns:
+        np.ndarray: Spontaneous activity values.
+    """
     spont_vals = np.zeros([n_cells, sample_spontaneous])
     spont_start_time = lsn.spont_stim_table['start'][0]
     spont_end_time = lsn.spont_stim_table['end'][0]
@@ -68,8 +96,22 @@ def make_sample_spontanous_ns(n_cells,
                            n_tot_ns_pres,
                            rng,
                            sample_spontaneous: int = 1000) -> np.ndarray:
-    
-    # define a sample of 1000 df/f values for the spontaneous activity for natural scenes
+    """
+        Generate a sample of spontaneous activity for the Natural Scenes (NS) stimulus.
+        
+        Args:
+            n_cells (int): Number of cells.
+            ns (NaturalScenes): NS stimulus object.
+            times (np.ndarray): Array of time points.
+            dff (np.ndarray): df/f values.
+            tot_ns_frames (int): Total number of NS frames.
+            n_tot_ns_pres (int): Total number of presentations.
+            rng (np.random.Generator): Random number generator.
+            sample_spontaneous (int): Number of spontaneous samples to generate.
+        
+        Returns:
+            np.ndarray: Spontaneous activity values.
+    """
     spont_vals = np.zeros([n_cells, sample_spontaneous])
     spont_start_time = ns.spont_stim_table['start'][0]
     spont_end_time = ns.spont_stim_table['end'][0]
@@ -90,8 +132,20 @@ def calc_lsn_vals(lsn,
                 offset_delay: float = 2,
                 trace_type: str = "events"): 
     
-    # iterates through the run and calculate the mean dff for each lsn presentation from start to the end of the presentation (i.e. mean sweep response
-    # )
+    """
+    Calculate the mean df/f values for each LSN presentation.
+    
+    Args:
+        lsn (LocallySparseNoise): LSN stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        LSN values, total LSN frames, cell indices.
+    """
     traces = session.get_traces(plane, trace_type=trace_type)
     n_tot_pres = lsn.sweep_responses.shape[0]
     times = traces.indexes['time']
@@ -127,8 +181,20 @@ def calc_ns12_vals(ns,
                 offset_delay: float = 2,
                 trace_type: str = "events"): 
     
-    # iterates through the run and calculate the mean dff for each ns presentation from start to the end of the presentation (i.e. mean sweep response
-    # )
+    """
+    Calculate the mean df/f values for each NS12 presentation.
+    
+    Args:
+        ns (NaturalScenes): NS stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        NS12 values, total NS frames.
+    """
     stim_table = session.get_stimulus_table("natural_images_12")
     stim_table_df = stim_table[0]
     n_images = len(stim_table_df["image"].unique())
@@ -170,8 +236,20 @@ def calc_ns118_vals(ns,
                 offset_delay: float = 2,
                 trace_type: str = "events"): 
     
-    # iterates through the run and calculate the mean dff for each ns presentation from start to the end of the presentation (i.e. mean sweep response
-    # )
+    """
+    Calculate the mean df/f values for each NS118 presentation.
+    
+    Args:
+        ns (NaturalScenes): NS stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        NS118 values, total NS frames.
+    """
     stim_table = session.get_stimulus_table("natural_images")
     stim_table_df = stim_table[0]
     n_images = len(stim_table_df["image_index"].unique())
@@ -212,7 +290,22 @@ def calc_pvals_for_plane_using_zscore_one_tailed(lsn,
                          tot_lsn_frames,rng,
                          sample_spontaneous: int = 1000,
                          trace_type: str = "events"):
-   
+    """
+    Calculate p-values for each LSN presentation using one-tailed z-scores.
+    
+    Args:
+        lsn (LocallySparseNoise): LSN stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        lsn_vals (np.ndarray): LSN values.
+        tot_lsn_frames (int): Total LSN frames.
+        rng (np.random.Generator): Random number generator.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        trace_type (str): Trace type.
+    
+    Returns:
+        P-values, spontaneous activity values.
+    """  
     traces = session.get_traces(plane, trace_type=trace_type)
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
@@ -252,7 +345,22 @@ def calc_ns12_pvals_for_plane_using_zscore_one_tailed(ns12,
                          tot_ns12_frames,rng,
                          sample_spontaneous: int = 1000,
                          trace_type: str = "events"):
-   
+    """
+    Calculate p-values for each NS12 presentation using one-tailed z-scores.
+    
+    Args:
+        ns12 (NaturalScenes): NS stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        ns12_vals (np.ndarray): NS12 values.
+        tot_ns12_frames (int): Total NS12 frames.
+        rng (np.random.Generator): Random number generator.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        trace_type (str): Trace type.
+    
+    Returns:
+        P-values, spontaneous activity values.
+    """
     traces = session.get_traces(plane, trace_type=trace_type)
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
@@ -294,7 +402,22 @@ def calc_ns118_pvals_for_plane_using_zscore_one_tailed(ns118,
                          tot_ns118_frames,rng,
                          sample_spontaneous: int = 1000,
                          trace_type: str = "events"):
-   
+    """
+    Calculate p-values for each NS118 presentation using one-tailed z-scores.
+    
+    Args:
+        ns118 (NaturalScenes): NS stimulus object.
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        ns118_vals (np.ndarray): NS118 values.
+        tot_ns118_frames (int): Total NS118 frames.
+        rng (np.random.Generator): Random number generator.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        trace_type (str): Trace type.
+    
+    Returns:
+        P-values, spontaneous activity values.
+    """
     traces = session.get_traces(plane, trace_type=trace_type)
     
     logging.info(f"{session.get_session_id()} ({session.get_plane_depth(plane)} µm): {np.median(traces.time.diff('time')):.4f}")
@@ -332,6 +455,15 @@ def calc_ns118_pvals_for_plane_using_zscore_one_tailed(ns118,
     return p_vals, spont_vals
 
 def get_center_indices(n):
+    """
+    Get the center indices for an array.
+    
+    Args:
+        n (int): Size of the array.
+    
+    Returns:
+        center_row, center_col: Center row and column indices.
+    """
     if n % 2 == 1:
         # If n is odd, there is one center cell
         center_row = n // 2
@@ -346,7 +478,17 @@ def get_center_indices(n):
 def rf_z_test(matrix,
               masked_z = True,
               square_mask_length: int = 7):
+    """
+    Perform a z-test on a receptive field matrix.
     
+    Args:
+        matrix (np.ndarray): Receptive field matrix.
+        masked_z (bool): Whether to mask the z-scores.
+        square_mask_length (int): Length of the square mask.
+    
+    Returns:
+        Z-score matrix, test outcome.
+    """    
     z_value_results = np.zeros((8,14))
     
     pad_wid = (square_mask_length-1)/2
@@ -378,6 +520,16 @@ def rf_z_test(matrix,
     return z_value_results, test_outcome
 
 def cell_has_rf(weighted_avg, nstd = 3):
+    """
+    Determine if a cell has a receptive field only based on the weighted average response.
+    
+    Args:
+        weighted_avg (np.ndarray): Weighted average of all trials.
+        nstd (int): Number of standard deviations for the threshold.
+    
+    Returns:
+        bool: True if the cell has a receptive field, False otherwise.
+    """
     val = weighted_avg.flatten()
     outcome = val >= val.mean() + nstd*val.std()
     
@@ -388,7 +540,16 @@ def cell_has_rf(weighted_avg, nstd = 3):
 
 def cell_has_rf_v2(n_responsive_trials, weighted_avg, min_responsive_trials = 6, nstd = 3):
     """
-    This function determines if a cell has ON or OFF RF or not
+    Determine if a cell has a receptive fields or not based on ceriteria set on both number of responsive trials and weighted average response.
+    
+    Args:
+        n_responsive_trials (np.ndarray): Array of responsive trials.
+        weighted_avg (np.ndarray): Weighted average of all trials.
+        min_responsive_trials (int): Minimum number of responsive trials.
+        nstd (int): Number of standard deviations for the threshold.
+    
+    Returns:
+        bool: True if the cell has an RF, False otherwise.
     """
     subfield_responsive_trials = n_responsive_trials
     mean_responsive_trials = subfield_responsive_trials.mean()
@@ -413,15 +574,15 @@ def cell_has_rf_v2(n_responsive_trials, weighted_avg, min_responsive_trials = 6,
 
 def find_rf_center(n_responsive_trials_events, weighted_avg_events):
     """
-    This function finds the coordinates of elements in array z(weighted_avg_off_events) that are greater than 2.5
-    and checks if these coordinates match with the coordinates of the maximum value in n_responsive_trials_off_events
-    or any of its neighboring coordinates within a range of ±1 in both x and y directions.
-
-    :param n_responsive_trials_events: NumPy array of shape 8x14
-    :param weighted_avg_events: NumPy array of shape 8x14
-    :return: RF center
-    """
+    Find the receptive field (RF) center coordinates.
     
+    Args:
+        n_responsive_trials_events (np.ndarray): Array of responsive trials.
+        weighted_avg_events (np.ndarray): Weighted average of all trials.
+    
+    Returns:
+        RF center coordinates and Gaussian input mask.
+    """
     z_score_mat, has_rf_zscore = rf_z_test(weighted_avg_events);
     max_zscore_pixel = np.where(z_score_mat == z_score_mat.max())
     max_zscore_x = max_zscore_pixel[0][0]
@@ -463,6 +624,17 @@ def find_rf_center(n_responsive_trials_events, weighted_avg_events):
     return rf_center_x, rf_center_y, gauss_input
 
 def assign_angle(data, center_x, center_y):
+    """
+    Assign angles to RFs based on the conditions of the data around the center coordinates.
+    
+    Args:
+        data (np.ndarray): Input data matrix.
+        center_x (int): X-coordinate of the center.
+        center_y (int): Y-coordinate of the center.
+    
+    Returns:
+        int: Assigned angle in degrees.
+    """
     rows, cols = data.shape
     # Check if the swapped center coordinates are within the array bounds
     if center_y < 0 or center_y >= cols or center_x < 0 or center_x >= rows:
@@ -485,15 +657,17 @@ def assign_angle(data, center_x, center_y):
     return angle_degrees
 
 def find_rf_center_v2(n_responsive_trials_events, weighted_avg_events):
-    """_summary_
-
+    """
+    Find the RF center coordinates based on the maximum z-score. 
+    This method was our final decision for finding the RF centers. 
+    Although, the notebooks use the centers calculated based on the old function and need to be updated.
+    
     Args:
-        n_responsive_trials_events (_type_): _description_
-        weighted_avg_events (_type_): _description_
-
-        This function finds the RF center based on the maximum of z_score_mat, remove n_responsive_trials_events later.
+        n_responsive_trials_events (np.ndarray): Array of responsive trials.
+        weighted_avg_events (np.ndarray): Weighted average of all trials.
+    
     Returns:
-        _type_: _description_
+        RF center coordinates and Gaussian input mask.
     """
     
     z_score_mat, has_rf_zscore = rf_z_test(weighted_avg_events);
@@ -576,7 +750,22 @@ def training_loop(model,
                   f_type=1, 
                   n_training=200, 
                   dim = [8, 14]):
-    "Training loop for torch model."
+    """
+    Training loop for the PyTorch model.
+    
+    Args:
+        model (Model): PyTorch model.
+        y (torch.Tensor): Target tensor.
+        optimizer (torch.optim.Optimizer): Optimizer.
+        balance_weight (float): Balance weight.
+        norm_weight (float): Normalization weight.
+        f_type (int): Function type.
+        n_training (int): Number of training iterations.
+        dim (list): Dimensions of the input tensor.
+    
+    Returns:
+        tuple: Losses and parameters.
+    """
     losses = []
     params = []
     x = torch.from_numpy(np.indices(dim))
@@ -606,6 +795,24 @@ def centroid(data,
              initialization = 'default',
              initial_weight=[1,1,1,1,1,0],
             return_loss=False):
+    """
+    Calculate the centroid of the data using gradient optimization.
+    
+    Args:
+        data (np.ndarray): Input data.
+        balance_weight (float): Balance weight.
+        norm_weight (float): Normalization weight.
+        lr (float): Learning rate.
+        weight_decay (float): Weight decay.
+        f_type (int): Function type.
+        n_training (int): Number of training iterations.
+        initialization (str): Initialization type.
+        initial_weight (list): Initial weights.
+        return_loss (bool): Whether to return the loss.
+    
+    Returns:
+        tuple: Centroid parameters.
+    """
     if f_type==5:
         return discrete_width(data, n_grid = 7)
 
@@ -656,6 +863,16 @@ def centroid(data,
         return params
 
 def discrete_width(data, n_grid=7):
+    """
+    Calculate the width using a discrete grid search.
+    
+    Args:
+        data (np.ndarray): Input data.
+        n_grid (int): Number of grid points.
+    
+    Returns:
+        tuple: Width parameters.
+    """
     x, y = np.indices(data.shape)
     best_fit_val = np.inf
     best_width_x = 0
@@ -679,6 +896,22 @@ def discrete_width(data, n_grid=7):
     return center_x, center_y, height, best_width_x, best_width_y, best_angle
 
 def gaussian(x, y, x_center, y_center, x_width, y_width, height, angle):
+    """
+    Generate a Gaussian function.
+    
+    Args:
+        x (np.ndarray): X-coordinates.
+        y (np.ndarray): Y-coordinates.
+        x_center (float): X-coordinate of the center.
+        y_center (float): Y-coordinate of the center.
+        x_width (float): Width along the X-axis.
+        y_width (float): Width along the Y-axis.
+        height (float): Height of the Gaussian.
+        angle (float): Angle in radians.
+    
+    Returns:
+        np.ndarray: Gaussian values.
+    """
     x_prime = np.cos(angle) * (x - x_center) + np.sin(angle) * (y - y_center)
     y_prime = -np.sin(angle) * (x - x_center) + np.cos(angle) * (y - y_center)
 
@@ -686,7 +919,17 @@ def gaussian(x, y, x_center, y_center, x_width, y_width, height, angle):
     y_term = (y_prime ** 2) / (2 * y_width ** 2)
 
     return height * np.exp(-(x_term + y_term))
+
 def compute_lsn_design_matrix(lsn):
+    """
+    Compute the design matrix for the LSN stimulus.
+    
+    Args:
+        lsn (LocallySparseNoise): LSN stimulus object.
+    
+    Returns:
+        tuple: Design matrix and frames.
+    """
     stim_pixels = lsn.frame_images[lsn.stim_table.frame.values].reshape((-1, lsn.n_pixels))
     design_matrix_on = np.where(stim_pixels == lsn.pixel_on, True, False)
     design_matrix_off = np.where(stim_pixels == lsn.pixel_off, True, False)
@@ -714,7 +957,20 @@ def calc_lsn_p_vals_for_col_vol_plane(session: OPhysSession,
                                       onset_delay: float = -1,
                                       offset_delay: float = 2,
                                       trace_type: str = "events"):
-
+    """
+    Calculate p-values for the LSN stimulus in a specific plane.
+    
+    Args:
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        LSN values, p-values, cell indices.
+    """
     all_pvals = []
     all_lsn_vals = []
         
@@ -751,7 +1007,20 @@ def calc_ns12_p_vals_for_col_vol_plane(session: OPhysSession,
                                       onset_delay: float = -1,
                                       offset_delay: float = 2,
                                       trace_type: str = "events"):
-
+    """
+    Calculate p-values for the NS12 stimulus in a specific plane.
+    
+    Args:
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        NS12 values, p-values, preferred images.
+    """
     all_ns_pvals = []
     all_ns_vals = []
         
@@ -795,7 +1064,20 @@ def calc_ns118_p_vals_for_col_vol_plane(session: OPhysSession,
                                       onset_delay: float = -1,
                                       offset_delay: float = 2,
                                       trace_type: str = "events"):
-
+    """
+    Calculate p-values for the NS118 stimulus in a specific plane.
+    
+    Args:
+        session (OPhysSession): OPhys session object.
+        plane (int): Plane number.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        trace_type (str): Trace type.
+    
+    Returns:
+        NS118 values, p-values, preferred images.
+    """
     all_ns_pvals = []
     all_ns_vals = []
         
@@ -836,6 +1118,16 @@ def calc_ns118_p_vals_for_col_vol_plane(session: OPhysSession,
             
 def get_plane_lsn_constants(session: OPhysSession,
                             trace_type: str = "events"):
+    """
+    Get constants for the LSN stimulus in a specific plane.
+    
+    Args:
+        session (OPhysSession): OPhys session object.
+        trace_type (str): Trace type.
+    
+    Returns:
+        tuple: Design matrix, trial template, frame images.
+    """
     planes = session.get_planes()
     if len(planes) == 0:
         raise ValueError('No planes found')
@@ -855,6 +1147,24 @@ def compute_lsn_ns_metrics_for_col_vol_plane(client: OPhysClient,
                         response_thresh_alpha: float = 0.05,
                         nstd: float = 3,
                         trace_type: str = "events") -> dict:
+    """
+    Compute metrics for the LSN and NS stimuli in a specific plane.
+    
+    Args:
+        client (OPhysClient): OPhys client object.
+        mouse_id (str): Mouse ID.
+        col_vol_id (str): Column volume ID.
+        plane (int): Plane number.
+        sample_spontaneous (int): Number of spontaneous samples to generate.
+        onset_delay (float): Onset delay.
+        offset_delay (float): Offset delay.
+        response_thresh_alpha (float): Response threshold alpha.
+        nstd (float): Number of standard deviations for the threshold.
+        trace_type (str): Trace type.
+    
+    Returns:
+        dict: Metrics for the LSN and NS stimuli.
+    """
 
     session = client.load_ophys_session(f"{mouse_id}_{col_vol_id}")
 
