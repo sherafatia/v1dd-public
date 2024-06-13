@@ -8,18 +8,18 @@ from sklearn.model_selection import GridSearchCV
 import joblib
 
 
-csv_tag = "_events_231120"
+csv_tag = "_240610"
 
-slc2 = pd.read_csv(ARTIFACT_DIR /f'slc2_all_stim_metric{csv_tag}.csv')
+slc2 = pd.read_csv(ARTIFACT_DIR /f'slc2_all_stim_metrics{csv_tag}.csv')
 slc2.insert(1, 'mouse_id', "slc2", True)
 
-slc4 = pd.read_csv(ARTIFACT_DIR/f'slc4_all_stim_metric{csv_tag}.csv')
+slc4 = pd.read_csv(ARTIFACT_DIR/f'slc4_all_stim_metrics{csv_tag}.csv')
 slc4.insert(1, 'mouse_id', "slc4", True)
 
-slc5 = pd.read_csv(ARTIFACT_DIR/f'slc5_all_stim_metric{csv_tag}.csv')
+slc5 = pd.read_csv(ARTIFACT_DIR/f'slc5_all_stim_metrics{csv_tag}.csv')
 slc5.insert(1, 'mouse_id', "slc5", True)
 
-teto1 = pd.read_csv(ARTIFACT_DIR/f'teto1_all_stim_metric{csv_tag}.csv')
+teto1 = pd.read_csv(ARTIFACT_DIR/f'teto1_all_stim_metrics{csv_tag}.csv')
 teto1.insert(1, 'mouse_id', "teto1", True)
 
 # append 4 mice info into one pandas dataframe
@@ -31,21 +31,21 @@ cell_info["column"].unique()
 
 res2 = ['frac_res_to_on',
         'frac_res_to_off',
-        'frac_resp_full',
-        'frac_resp_windowed',
-        'frac_resp_natural_images',
-        'frac_resp_natural_images_12',
-        'frac_resp_natural_movie'
+        'frac_resp_dgf',
+        'frac_resp_dgw',
+        'frac_res_to_ns118',
+        'frac_res_to_ns12',
+        'frac_resp_nm'
        ]
 features = cell_info[res2]
 
 features.rename(columns = {'frac_res_to_on': "LSN-ON",
        'frac_res_to_off': "LSN-OFF",
-       'frac_resp_full':'DGF',
-       'frac_resp_windowed':'DGW',
-       'frac_resp_natural_images':'NI',
-       'frac_resp_natural_images_12':'NI12',
-       'frac_resp_natural_movie':'NM'},
+       'frac_resp_dgf':'DGF',
+       'frac_resp_dgw':'DGW',
+       'frac_res_to_ns118':'NI',
+       'frac_res_to_ns12':'NI12',
+       'frac_resp_nm':'NM'},
         inplace = True)
 
 
