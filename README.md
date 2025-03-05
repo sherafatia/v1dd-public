@@ -21,17 +21,17 @@ conda create --name v1dd-public python=3.10
 ```
 conda activate v1dd-public
 ```
-- Install poetry (if necessary):
+- Install poetry version 1.5.1 locally:
 ```
-sudo apt install python3-poetry
+pip install poetry==1.5.1
 ```
 - Install the requirements using poetry (poetry.lock points to a hash of allen-v1dd back in 2023):
 ```
-Poetry install 
+poetry install 
 ```
 - You also need to install the AllenSDK repository:
 ```
-Pip install allensdk
+pip install allensdk
 ```
 
 ## Data
