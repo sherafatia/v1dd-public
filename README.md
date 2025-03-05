@@ -8,9 +8,10 @@ Author: Arefeh Sherafati (arefesherafati@gmail.com)
 
 These set of analyses are built upon a version of the [`allen_v1dd`](https://github.com/AllenInstitute/allen_v1dd/blob/main/README.md) repository that I saved in 2023.  This repository is currently private. You need to request access to allen_v1dd prior to using the current repository. After you gained access to allen_v1dd:
 
--	Clone the current repository:
+-	Clone the current repository & cd into repository folder:
 ```
 git clone https://github.com/sherafatia/v1dd-public.git
+cd v1dd-public
 ```
 -	Create a new conda environment:
 ```
