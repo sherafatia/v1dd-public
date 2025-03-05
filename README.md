@@ -21,6 +21,10 @@ conda create --name v1dd-public python=3.10
 ```
 conda activate v1dd-public
 ```
+- Install poetry (if necessary):
+```
+sudo apt install python3-poetry
+```
 - Install the requirements using poetry (poetry.lock points to a hash of allen-v1dd back in 2023):
 ```
 Poetry install 
