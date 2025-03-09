@@ -8,7 +8,12 @@ import numpy as np
 from tqdm.notebook import tqdm
 from pathlib import Path
 from allen_v1dd.client import OPhysClient
+
+# added in because I was having trouble importin ARTIFACT_DIR
+import sys
+sys.path.insert(0, '/home/naomi/Desktop/code/v1dd-public/')
 from v1dd_public import ARTIFACT_DIR
+
 import h5py
 import warnings
 
@@ -19,7 +24,7 @@ warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level="INFO")
 
-DATA_DIR = Path("/home/roozbehf/Documents/v1dd_arefeh/V1_DD_NWBs/")
+DATA_DIR = Path("/home/naomi/Desktop/data/V1dd_nwbs/")
 NWB_DATA_DIR = DATA_DIR / "nwbs"
 
 def run_analysis_for_plane(analysis_name: str,
@@ -46,7 +51,7 @@ def compute_metrics_for_all_mice(analysis_name: str,
                                 nwb_file_paths=nwb_file_paths, 
                                 start_idx=start_idx)
             
-    all_metrics = Parallel(n_jobs=n_jobs, verbose=1)(delayed(compute_lsn_ns_metrics_for_col_vol_plane)(client, d["mouse_id"], d["col_vol_id"], d["plane"]) for d in data)
+    all_metrics = Parallel(n_jobs=15, verbose=10)(delayed(compute_lsn_ns_metrics_for_col_vol_plane)(client, d["mouse_id"], d["col_vol_id"], d["plane"]) for d in data)
     logger.info(f"Done computing {len(all_metrics)} metrics.")
     
     h5_name = save_data_to_h5_file(all_metrics, analysis_name)
