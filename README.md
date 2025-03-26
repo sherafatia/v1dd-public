@@ -1,12 +1,12 @@
 # v1dd_public
-This repository contains the code for reproducing the figures of the V1DD manuscript as of June 15th 2024.
+This repository contains the code for reproducing the figures of the V1DD manuscript as of March 26 2025.
 
 
-Author: Arefeh Sherafati (arefesherafati@gmail.com)
+Author: Arefeh Sherafati (arefesherafati@gmail.com), Naomi Donovan (naomi.donovan@ucsf.edu)
 
 ## Dependencies
 
-These set of analyses are built upon a version of the [`allen_v1dd`](https://github.com/AllenInstitute/allen_v1dd/blob/main/README.md) repository that I saved in 2023.  This repository is currently private. You need to request access to allen_v1dd prior to using the current repository. After you gained access to allen_v1dd:
+These set of analyses are built upon a version of the [`allen_v1dd`](https://github.com/AllenInstitute/allen_v1dd/blob/main/README.md) repository that was saved in 2023.  This repository is currently private. You need to request access to allen_v1dd prior to using the current repository. After you gained access to allen_v1dd:
 
 -	Clone the current repository & cd into repository folder:
 ```
@@ -64,7 +64,8 @@ v1dd_figure2.ipynb
 v1dd_figure3.ipynb
 v1dd_figure4.ipynb
 v1dd_figure5.ipynb
-v1dd_figure6.ipynb
+v1dd_figure6_corrected.ipynb
 v1dd_figure7.ipynb
+v1dd_figure8.ipynb (supplementary figure 4 -- need to rename)
 v1dd_supplementary_figure1.ipynb
 ```
