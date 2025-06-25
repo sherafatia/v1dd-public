@@ -56,7 +56,9 @@ def select_rois(session, plane, metrics_df=None, unduplicated=False):
                 (metrics_df["mouse_id"] == get_mouse_name(session.get_mouse_id()))
                 & (metrics_df["column"] == session.get_column_id())
                 & (metrics_df["volume"] == str(session.get_volume_id()))
-                & (metrics_df["plane"] == plane)
+                & (
+                    metrics_df["plane"] == (plane - 1)
+                )  # correct for 0-indexing in metrics_df
             ].cell_index.values
             return list(rois)
         else:
@@ -119,6 +121,10 @@ def get_mean_dff_traces(
     # Load in stimulus table and drop any rows with NA values
     stimulus_table, _ = session.get_stimulus_table(stimulus_type)
     stimulus_table = stimulus_table.dropna()
+    stimulus_table = stimulus_table[
+        stimulus_table["end"]
+        < session.get_traces(plane=plane, trace_type="dff").time.values[-1]
+    ]
 
     # Grab the start times and end times of each stimulus
     stim_starts = stimulus_table.start.values
@@ -166,7 +172,7 @@ def knn_cross_validation(max_neighbors, metric, X_data, Y_data):
 
 def get_X_data(
     session,
-    planes,
+    plane,
     stimulus_type,
     metrics_df=None,
     unduplicated=False,
@@ -174,32 +180,35 @@ def get_X_data(
 ):
 
     X_data_df = pd.DataFrame()
-    for plane in planes:
-        rois = select_rois(session, plane, metrics_df, unduplicated)
-        if rois is not None:
-            mean_dff_traces_df = get_mean_dff_traces(
-                session=session,
-                stimulus_type=stimulus_type,
-                plane=plane,
-                folder_name=folder_name,
-            )
-            if mean_dff_traces_df is not None:
-                X_data_df = pd.concat([X_data_df, mean_dff_traces_df[rois]], axis=1)
-            else:
-                print(
-                    f"Mean dff traces df doesn't exist for {get_session_id(session=session, plane=plane)}"
-                )
+    rois = select_rois(session, plane, metrics_df, unduplicated)
+    if rois is not None:
+        mean_dff_traces_df = get_mean_dff_traces(
+            session=session,
+            stimulus_type=stimulus_type,
+            plane=plane,
+            folder_name=folder_name,
+        )
+        if mean_dff_traces_df is not None:
+            X_data_df = pd.concat([X_data_df, mean_dff_traces_df[rois]], axis=1)
         else:
             print(
-                f"Rois (unduplicated={unduplicated}) don't exist for {get_session_id(session=session, plane=plane)}"
+                f"Mean dff traces df doesn't exist for {get_session_id(session=session, plane=plane)}"
             )
+    else:
+        print(
+            f"Rois (unduplicated={unduplicated}) don't exist for {get_session_id(session=session, plane=plane)}"
+        )
     return X_data_df.values
 
 
-def get_Y_data(session, stimulus_type, decode_dim):
+def get_Y_data(session, plane, stimulus_type, decode_dim):
 
     stimulus_table, _ = session.get_stimulus_table(stimulus_type)
     stimulus_table = stimulus_table.dropna()
+    stimulus_table = stimulus_table[
+        stimulus_table["end"]
+        < session.get_traces(plane=plane, trace_type="dff").time.values[-1]
+    ]
 
     if "drifting_gratings" in stimulus_type:
         if ("direction" in decode_dim) & ("spatial" not in decode_dim):
@@ -275,15 +284,15 @@ def get_Y_data(session, stimulus_type, decode_dim):
 
 def run_decoding(
     session,
-    planes,
+    plane,
     stimulus_type,
     repetitions,
     decode_dim,
-    cross_validation=True,
-    folds=5,
+    # cross_validation=True,
+    # folds=5,
     max_neighbors=15,
     metric="correlation",
-    test_size=0.2,
+    # test_size=0.2,
     bootstrap=True,
     bootstrap_size=250,
     metrics_df=None,
@@ -296,15 +305,15 @@ def run_decoding(
     if tag:
         decoding_folder_name = os.path.join(
             results_folder,
-            f"{tag}_{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}_UndupROIs{unduplicated}_CV{cross_validation}",
+            f"{tag}_{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
         )
     else:
         decoding_folder_name = os.path.join(
             results_folder,
-            f"{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}_UndupROIs{unduplicated}_CV{cross_validation}",
+            f"{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
         )
 
-    file_name = f"{get_session_id(session)}_{planes[0]}{planes[1]}{planes[2]}.pkl"
+    file_name = f"{get_session_id(session)}_plane{plane}.pkl"
 
     # Check if the decoding results df is already calculated and saved locally
     if os.path.isfile(
@@ -337,17 +346,19 @@ def run_decoding(
 
     # Check to see if there is X_data (i.e. if there are neuron responses for this session)
     X_data = get_X_data(
-        session, planes, stimulus_type, metrics_df, unduplicated, folder_name
+        session, plane, stimulus_type, metrics_df, unduplicated, folder_name
     )
     if X_data is None:
         print("Cannot find any X data...cannot perform decoding")
         return None
-    if np.shape(X_data)[1] < 2:
-        print("Not enough X_data...cannot perform decoding")
+    if np.shape(X_data)[1] < bootstrap_size:
+        print(
+            f"Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
+        )
         return None
 
     # Check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
-    Y_data = get_Y_data(session, stimulus_type, decode_dim)
+    Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
     if Y_data is None:
         return None
 
@@ -355,7 +366,7 @@ def run_decoding(
 
         # Load in X_data (neural responses)
         X_data = get_X_data(
-            session, planes, stimulus_type, metrics_df, unduplicated, folder_name
+            session, plane, stimulus_type, metrics_df, unduplicated, folder_name
         )
 
         if (
@@ -366,7 +377,7 @@ def run_decoding(
             )
 
         # Load in Y_data (visual stimulus identity)
-        Y_data = get_Y_data(session, stimulus_type, decode_dim)
+        Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
 
         # Check type of Y_data and make sure it is able to be decoded
         # (i.e. has to all be discrete integer values, not continuous)
@@ -405,7 +416,7 @@ def run_decoding(
         mouse_ids.append(session.get_mouse_id())
         column_ids.append(session.get_column_id())
         volume_ids.append(session.get_volume_id())
-        plane_group.append(planes)
+        plane_group.append(plane)
         repetition_nums.append(i)
 
     # Save results in dataframe
@@ -431,7 +442,7 @@ def run_decoding(
             "mouse_id",
             "column_id",
             "volume_id",
-            "planes",
+            "plane",
             "repetition_num",
             "test_accuracies",
             "test_accuracies_mean",
@@ -449,10 +460,7 @@ def run_decoding(
             os.makedirs(decoding_folder_name)
         pd.to_pickle(
             indiv_results_df,
-            os.path.join(
-                decoding_folder_name,
-                f"{get_session_id(session)}_{planes[0]}{planes[1]}{planes[2]}.pkl",
-            ),
+            os.path.join(decoding_folder_name, file_name),
         )
 
     return indiv_results_df
