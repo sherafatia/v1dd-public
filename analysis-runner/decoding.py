@@ -316,19 +316,19 @@ def run_decoding(
     file_name = f"{get_session_id(session)}_plane{plane}.pkl"
 
     # Check if the decoding results df is already calculated and saved locally
-    if os.path.isfile(
-        os.path.join(
-            decoding_folder_name,
-            file_name,
-        )
-    ):
-        indiv_results_df = pd.read_pickle(
-            os.path.join(
-                decoding_folder_name,
-                file_name,
-            )
-        )
-        return indiv_results_df
+    # if os.path.isfile(
+    #     os.path.join(
+    #         decoding_folder_name,
+    #         file_name,
+    #     )
+    # ):
+    #     indiv_results_df = pd.read_pickle(
+    #         os.path.join(
+    #             decoding_folder_name,
+    #             file_name,
+    #         )
+    #     )
+    #     return indiv_results_df
 
     mouse_ids = []
     column_ids = []
