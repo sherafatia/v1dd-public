@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 ## Decoding parameters
 repetitions = 1000  # Number of bootstrap repetitions
 bootstrap_size = 50  # Size of bootstrap sample; or threshold for minimum number of ROIs to perform decoding (if bootstrap=False)
-tag = "2025_0730_3"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
+tag = "2025_0715_2"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
 data_folder = "/home/naomi/Desktop/data"
 path_to_nwbs = f"{data_folder}/V1dd_nwbs"
 path_to_metrics = f"{data_folder}/all_metrics_240426.csv"
@@ -65,7 +65,7 @@ for sess_id in client.get_all_session_ids():
             decode_dim=dim,
             max_neighbors=15,
             metric="correlation",
-            bootstrap=False,
+            bootstrap=True,
             bootstrap_size=bootstrap_size,
             metrics_df=metrics_df,
             unduplicated=undup,
