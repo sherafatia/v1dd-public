@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
-from decoding import get_mean_dff_traces, run_decoding
+from decoding import get_mean_dff_traces, run_decoding_v2
 from allen_v1dd.client import OPhysClient
 from joblib import Parallel, delayed
 
 ## Decoding parameters
 repetitions = 1  # Number of bootstrap repetitions
 bootstrap_size = 1  # Size of bootstrap sample; or threshold for minimum number of ROIs to perform decoding (if bootstrap=False)
-tag = "2025_0721_1"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
+tag = "2025_0728_2"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
 data_folder = "/home/naomi/Desktop/data"
 path_to_nwbs = f"{data_folder}/V1dd_nwbs"
 path_to_metrics = f"{data_folder}/all_metrics_240426.csv"
@@ -56,15 +56,35 @@ for sess_id in client.get_all_session_ids():
     print(f"Performing decoding for session {sess_id}")
 
     # apply multiprocessing to run decoding in parallel
+    # Parallel(n_jobs=-1)(
+    #     delayed(run_decoding)(
+    #         session=sess,
+    #         plane=plane,
+    #         stimulus_type=stim_type,
+    #         repetitions=repetitions,
+    #         decode_dim=dim,
+    #         max_neighbors=15,
+    #         metric="correlation",
+    #         bootstrap=False,
+    #         bootstrap_size=bootstrap_size,
+    #         metrics_df=metrics_df,
+    #         unduplicated=undup,
+    #         folder_name=data_folder,
+    #         save_decoding=True,
+    #         results_folder=results_folder,
+    #         tag=tag,
+    #     )
+    #     for plane in sess.get_planes()
+    #     for stim_type in stim_types
+    #     for dim in decode_dims[stim_type]
+    # )
     Parallel(n_jobs=-1)(
-        delayed(run_decoding)(
+        delayed(run_decoding_v2)(
             session=sess,
             plane=plane,
             stimulus_type=stim_type,
             repetitions=repetitions,
             decode_dim=dim,
-            max_neighbors=15,
-            metric="correlation",
             bootstrap=False,
             bootstrap_size=bootstrap_size,
             metrics_df=metrics_df,

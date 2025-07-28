@@ -1,17 +1,19 @@
-import os, random, sys, math
+import os, math
 import numpy as np
 import pandas as pd
 from sklearn import metrics, preprocessing
 from itertools import compress
-from allen_v1dd.client import OPhysClient
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
 
-from sklearn.model_selection import KFold
+import warnings
+
+# Suppress warnings that pop up during train_test_split (mostly because of NS Set 1 -- some images appear 2, 3, 4 times etc)
+warnings.filterwarnings("ignore", message="The least populated class in y has only")
 
 
 def get_mouse_name(mouse_id):
@@ -385,8 +387,21 @@ def run_decoding(
             lab_enc = preprocessing.LabelEncoder()
             Y_data = lab_enc.fit_transform(Y_data)
 
+        # Split data into training and test sets
+        n1 = math.floor(len(X_data) * 0.8)
+        x_train = X_data[:n1, :]
+        y_train = Y_data[:n1]
+        x_test = X_data[n1:, :]
+        y_test = Y_data[n1:]
+
         # Figure out best # of neighbors to use
-        knn, best_k = knn_cross_validation(max_neighbors, metric, X_data, Y_data)
+        knn, best_k = knn_cross_validation(max_neighbors, metric, x_train, y_train)
+        knn.fit(x_train, y_train)
+        y_pred_train = knn.predict(x_train)
+        y_pred_test = knn.predict(x_test)
+        # Calculate accuracy scores
+        train_accuracy = metrics.accuracy_score(y_train, y_pred_train)
+        test_accuracy = metrics.accuracy_score(y_test, y_pred_test)
 
         # Calculate 5-fold cross validation scores
         fold_scores = cross_val_score(knn, X_data, Y_data, cv=5)
@@ -443,6 +458,451 @@ def run_decoding(
             "column_id",
             "volume_id",
             "plane",
+            "repetition_num",
+            "test_accuracies",
+            "test_accuracies_mean",
+            "test_accuracies_std",
+            "shuf_test_accuracies",
+            "shuf_test_accuracies_mean",
+            "shuf_test_accuracies_std",
+            "num_k_neighbors",
+            "shuf_num_k_neighbors",
+        ],
+    )
+
+    if save_decoding:
+        if not os.path.exists(decoding_folder_name):
+            os.makedirs(decoding_folder_name)
+        pd.to_pickle(
+            indiv_results_df,
+            os.path.join(decoding_folder_name, file_name),
+        )
+
+    return indiv_results_df
+
+
+def run_decoding_v2(
+    session,
+    plane,
+    stimulus_type,
+    repetitions,
+    decode_dim,
+    folds=5,
+    bootstrap=True,
+    bootstrap_size=250,
+    metrics_df=None,
+    unduplicated=False,
+    folder_name="/home/naomi/Desktop/data",
+    save_decoding=True,
+    results_folder="/home/naomi/Desktop/data/decoding_results",
+    tag=None,
+):
+    if tag:
+        decoding_folder_name = os.path.join(
+            results_folder,
+            f"{tag}_{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
+        )
+    else:
+        decoding_folder_name = os.path.join(
+            results_folder,
+            f"{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
+        )
+
+    file_name = f"{get_session_id(session)}_plane{plane}.pkl"
+
+    # Check if the decoding results df is already calculated and saved locally
+    if os.path.isfile(
+        os.path.join(
+            decoding_folder_name,
+            file_name,
+        )
+    ):
+        indiv_results_df = pd.read_pickle(
+            os.path.join(
+                decoding_folder_name,
+                file_name,
+            )
+        )
+        return indiv_results_df
+
+    mouse_ids = []
+    column_ids = []
+    volume_ids = []
+    plane_group = []
+    repetition_nums = []
+    test_accuracies = []
+    test_accuracies_mean = []
+    test_accuracies_std = []
+    shuf_test_accuracies = []
+    shuf_test_accuracies_mean = []
+    shuf_test_accuracies_std = []
+    num_k_neighbors = []
+    shuf_num_k_neighbors = []
+
+    # Check to see if there is X_data (i.e. if there are neuron responses for this session)
+    X_data = get_X_data(
+        session, plane, stimulus_type, metrics_df, unduplicated, folder_name
+    )
+    if X_data is None:
+        print("Cannot find any X data...cannot perform decoding")
+        return None
+    if np.shape(X_data)[1] < bootstrap_size:
+        print(
+            f"Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
+        )
+        return None
+
+    # Check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
+    Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
+    if Y_data is None:
+        return None
+
+    for i in range(repetitions):
+
+        # Load in X_data (neural responses)
+        X_data = get_X_data(
+            session, plane, stimulus_type, metrics_df, unduplicated, folder_name
+        )
+
+        if (
+            bootstrap
+        ):  # select w/ replacement -- to control for different #s of neurons between recs.
+            X_data = (
+                pd.DataFrame(X_data).T.sample(n=bootstrap_size, replace=True).T.values
+            )
+
+        # Load in Y_data (visual stimulus identity)
+        Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
+
+        # Check type of Y_data and make sure it is able to be decoded
+        # (i.e. has to all be discrete integer values, not continuous)
+        if type(Y_data[0]) is not int:
+            lab_enc = preprocessing.LabelEncoder()
+            Y_data = lab_enc.fit_transform(Y_data)
+
+        # Perform nested cross-validation
+        for shuf_type in [False, True]:
+            accuracies, best_ks = (
+                [],
+                [],
+            )  # Store accuracies & best # of neighbors across the folds
+            for fold in range(folds):
+                x_train, x_test, y_train, y_test = train_test_split(
+                    X_data,
+                    Y_data,
+                    test_size=0.2,
+                    random_state=int(i * folds + fold + 1),
+                )
+
+                if shuf_type:
+                    # Shuffle the training data
+                    np.random.shuffle(y_train)
+
+                # Perform grid search for optimal k
+                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                knn = KNeighborsClassifier(metric="correlation")
+                grid_search = GridSearchCV(
+                    knn, param_grid, cv=folds, scoring="accuracy"
+                )
+                grid_search.fit(x_train, y_train)
+                best_k = grid_search.best_params_["n_neighbors"]
+
+                # Fit the model with the best k
+                knn = KNeighborsClassifier(n_neighbors=best_k, metric="correlation")
+                knn.fit(x_train, y_train)
+
+                # Predict on training and test sets
+                # y_pred_train = knn.predict(x_train)
+                y_pred_test = knn.predict(x_test)
+
+                # Calculate accuracy scores
+                # train_accuracy = metrics.accuracy_score(y_train, y_pred_train)
+                test_accuracy = metrics.accuracy_score(y_test, y_pred_test)
+
+                # Store accuracies and best k
+                accuracies.append(test_accuracy)
+                best_ks.append(best_k)
+
+            # Save cross-val scores, mean of scores, and std of scores
+            if shuf_type:
+                shuf_test_accuracies.append(accuracies)
+                shuf_test_accuracies_mean.append(np.mean(accuracies))
+                shuf_test_accuracies_std.append(np.std(accuracies))
+                shuf_num_k_neighbors.append(best_ks)
+            else:
+                test_accuracies.append(accuracies)
+                test_accuracies_mean.append(np.mean(accuracies))
+                test_accuracies_std.append(np.std(accuracies))
+                num_k_neighbors.append(best_ks)
+
+        # Save info about recording + decoding #
+        mouse_ids.append(session.get_mouse_id())
+        column_ids.append(session.get_column_id())
+        volume_ids.append(session.get_volume_id())
+        plane_group.append(plane)
+        repetition_nums.append(i)
+
+    # Save results in dataframe
+    indiv_results_df = pd.DataFrame(
+        data=list(
+            zip(
+                mouse_ids,
+                column_ids,
+                volume_ids,
+                plane_group,
+                repetition_nums,
+                test_accuracies,
+                test_accuracies_mean,
+                test_accuracies_std,
+                shuf_test_accuracies,
+                shuf_test_accuracies_mean,
+                shuf_test_accuracies_std,
+                num_k_neighbors,
+                shuf_num_k_neighbors,
+            )
+        ),
+        columns=[
+            "mouse_id",
+            "column_id",
+            "volume_id",
+            "plane",
+            "repetition_num",
+            "test_accuracies",
+            "test_accuracies_mean",
+            "test_accuracies_std",
+            "shuf_test_accuracies",
+            "shuf_test_accuracies_mean",
+            "shuf_test_accuracies_std",
+            "num_k_neighbors",
+            "shuf_num_k_neighbors",
+        ],
+    )
+
+    if save_decoding:
+        if not os.path.exists(decoding_folder_name):
+            os.makedirs(decoding_folder_name)
+        pd.to_pickle(
+            indiv_results_df,
+            os.path.join(decoding_folder_name, file_name),
+        )
+
+    return indiv_results_df
+
+
+def run_decoding_v3(
+    session,
+    planes,
+    stimulus_type,
+    repetitions,
+    decode_dim,
+    folds=5,
+    bootstrap=True,
+    bootstrap_size=250,
+    metrics_df=None,
+    unduplicated=False,
+    folder_name="/home/naomi/Desktop/data",
+    save_decoding=True,
+    results_folder="/home/naomi/Desktop/data/decoding_results",
+    tag=None,
+):
+
+    # Check that the correct number of planes is provided
+    if len(planes) != 3:
+        raise ValueError("Please provide exactly 3 planes for decoding.")
+
+    if tag:
+        decoding_folder_name = os.path.join(
+            results_folder,
+            f"{tag}_{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
+        )
+    else:
+        decoding_folder_name = os.path.join(
+            results_folder,
+            f"{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
+        )
+
+    file_name = f"{get_session_id(session)}_planes{planes[0]}{planes[1]}{planes[2]}.pkl"
+
+    # Check if the decoding results df is already calculated and saved locally
+    if os.path.isfile(
+        os.path.join(
+            decoding_folder_name,
+            file_name,
+        )
+    ):
+        indiv_results_df = pd.read_pickle(
+            os.path.join(
+                decoding_folder_name,
+                file_name,
+            )
+        )
+        return indiv_results_df
+
+    mouse_ids = []
+    column_ids = []
+    volume_ids = []
+    plane_group = []
+    repetition_nums = []
+    test_accuracies = []
+    test_accuracies_mean = []
+    test_accuracies_std = []
+    shuf_test_accuracies = []
+    shuf_test_accuracies_mean = []
+    shuf_test_accuracies_std = []
+    num_k_neighbors = []
+    shuf_num_k_neighbors = []
+
+    # Load X_data (i.e. if there are neuron responses for this session)
+    X_data = np.array([])  # Initialize X_data as an empty array
+    for plane in planes:
+        if len(X_data) == 0:
+            # If X_data is empty, initialize it with the first plane's data
+            X_data = get_X_data(
+                session=session,
+                plane=plane,
+                stimulus_type=stimulus_type,
+                metrics_df=metrics_df,
+                unduplicated=unduplicated,
+                folder_name=folder_name,
+            )
+        else:
+            # Concatenate the new plane's data to the existing X_data
+            X_data = np.concatenate(
+                (
+                    X_data,
+                    get_X_data(
+                        session=session,
+                        plane=plane,
+                        stimulus_type=stimulus_type,
+                        metrics_df=metrics_df,
+                        unduplicated=unduplicated,
+                        folder_name=folder_name,
+                    ),
+                ),
+                axis=1,
+            )
+
+    # Check if there is enough X_data for decoding
+    if X_data is None:
+        print("Cannot find any X data...cannot perform decoding")
+        return None
+    if np.shape(X_data)[1] < bootstrap_size:
+        print(
+            f"Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
+        )
+        return None
+
+    # Load and check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
+    ## can just load it once for all planes, since they are from the same session
+    Y_data = get_Y_data(session, planes[0], stimulus_type, decode_dim)
+    if Y_data is None:
+        return None
+
+    for i in range(repetitions):
+
+        if (
+            bootstrap
+        ):  # select w/ replacement -- to control for different #s of neurons between recs.
+            X_data_copy = (
+                pd.DataFrame(X_data).T.sample(n=bootstrap_size, replace=True).T.values
+            )
+        else:
+            X_data_copy = X_data.copy()
+
+        Y_data_copy = Y_data.copy()
+
+        # Check type of Y_data and make sure it is able to be decoded
+        # (i.e. has to all be discrete integer values, not continuous)
+        if type(Y_data_copy[0]) is not int:
+            lab_enc = preprocessing.LabelEncoder()
+            Y_data_copy = lab_enc.fit_transform(Y_data_copy)
+
+        # Perform nested cross-validation
+        for shuf_type in [False, True]:
+            accuracies, best_ks = (
+                [],
+                [],
+            )  # Store accuracies & best # of neighbors across the folds
+            for fold in range(folds):
+                x_train, x_test, y_train, y_test = train_test_split(
+                    X_data_copy,
+                    Y_data_copy,
+                    test_size=0.2,
+                    random_state=int(i * folds + fold + 1),
+                )
+
+                if shuf_type:
+                    # Shuffle the training data
+                    np.random.shuffle(y_train)
+
+                # Perform grid search for optimal k
+                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                knn = KNeighborsClassifier(metric="correlation")
+                grid_search = GridSearchCV(
+                    knn, param_grid, cv=folds, scoring="accuracy"
+                )
+                grid_search.fit(x_train, y_train)
+                best_k = grid_search.best_params_["n_neighbors"]
+
+                # Fit the model with the best k
+                knn = KNeighborsClassifier(n_neighbors=best_k, metric="correlation")
+                knn.fit(x_train, y_train)
+
+                # Predict on training and test sets
+                # y_pred_train = knn.predict(x_train)
+                y_pred_test = knn.predict(x_test)
+
+                # Calculate accuracy scores
+                # train_accuracy = metrics.accuracy_score(y_train, y_pred_train)
+                test_accuracy = metrics.accuracy_score(y_test, y_pred_test)
+
+                # Store accuracies and best k
+                accuracies.append(test_accuracy)
+                best_ks.append(best_k)
+
+            # Save cross-val scores, mean of scores, and std of scores
+            if shuf_type:
+                shuf_test_accuracies.append(accuracies)
+                shuf_test_accuracies_mean.append(np.mean(accuracies))
+                shuf_test_accuracies_std.append(np.std(accuracies))
+                shuf_num_k_neighbors.append(best_ks)
+            else:
+                test_accuracies.append(accuracies)
+                test_accuracies_mean.append(np.mean(accuracies))
+                test_accuracies_std.append(np.std(accuracies))
+                num_k_neighbors.append(best_ks)
+
+        # Save info about recording + decoding #
+        mouse_ids.append(session.get_mouse_id())
+        column_ids.append(session.get_column_id())
+        volume_ids.append(session.get_volume_id())
+        plane_group.append(planes)
+        repetition_nums.append(i)
+
+    # Save results in dataframe
+    indiv_results_df = pd.DataFrame(
+        data=list(
+            zip(
+                mouse_ids,
+                column_ids,
+                volume_ids,
+                plane_group,
+                repetition_nums,
+                test_accuracies,
+                test_accuracies_mean,
+                test_accuracies_std,
+                shuf_test_accuracies,
+                shuf_test_accuracies_mean,
+                shuf_test_accuracies_std,
+                num_k_neighbors,
+                shuf_num_k_neighbors,
+            )
+        ),
+        columns=[
+            "mouse_id",
+            "column_id",
+            "volume_id",
+            "planes",
             "repetition_num",
             "test_accuracies",
             "test_accuracies_mean",
