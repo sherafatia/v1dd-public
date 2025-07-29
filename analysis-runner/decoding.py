@@ -1,12 +1,15 @@
-import os, math
+import os
 import numpy as np
 import pandas as pd
 from sklearn import metrics, preprocessing
 from itertools import compress
 
+from allen_v1dd.client import OPhysClient
+
+client = OPhysClient("/home/naomi/Desktop/data/V1dd_nwbs")
+
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
 
@@ -284,205 +287,8 @@ def get_Y_data(session, plane, stimulus_type, decode_dim):
         return None
 
 
-def run_decoding(
-    session,
-    plane,
-    stimulus_type,
-    repetitions,
-    decode_dim,
-    # cross_validation=True,
-    # folds=5,
-    max_neighbors=15,
-    metric="correlation",
-    # test_size=0.2,
-    bootstrap=True,
-    bootstrap_size=250,
-    metrics_df=None,
-    unduplicated=False,
-    folder_name="/home/naomi/Desktop/data",
-    save_decoding=True,
-    results_folder="/home/naomi/Desktop/data/decoding_results",
-    tag=None,
-):
-    if tag:
-        decoding_folder_name = os.path.join(
-            results_folder,
-            f"{tag}_{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
-        )
-    else:
-        decoding_folder_name = os.path.join(
-            results_folder,
-            f"{stimulus_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
-        )
-
-    file_name = f"{get_session_id(session)}_plane{plane}.pkl"
-
-    # Check if the decoding results df is already calculated and saved locally
-    if os.path.isfile(
-        os.path.join(
-            decoding_folder_name,
-            file_name,
-        )
-    ):
-        indiv_results_df = pd.read_pickle(
-            os.path.join(
-                decoding_folder_name,
-                file_name,
-            )
-        )
-        return indiv_results_df
-
-    mouse_ids = []
-    column_ids = []
-    volume_ids = []
-    plane_group = []
-    repetition_nums = []
-    test_accuracies = []
-    test_accuracies_mean = []
-    test_accuracies_std = []
-    shuf_test_accuracies = []
-    shuf_test_accuracies_mean = []
-    shuf_test_accuracies_std = []
-    num_k_neighbors = []
-    shuf_num_k_neighbors = []
-
-    # Check to see if there is X_data (i.e. if there are neuron responses for this session)
-    X_data = get_X_data(
-        session, plane, stimulus_type, metrics_df, unduplicated, folder_name
-    )
-    if X_data is None:
-        print("Cannot find any X data...cannot perform decoding")
-        return None
-    if np.shape(X_data)[1] < bootstrap_size:
-        print(
-            f"Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
-        )
-        return None
-
-    # Check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
-    Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
-    if Y_data is None:
-        return None
-
-    for i in range(repetitions):
-
-        # Load in X_data (neural responses)
-        X_data = get_X_data(
-            session, plane, stimulus_type, metrics_df, unduplicated, folder_name
-        )
-
-        if (
-            bootstrap
-        ):  # select w/ replacement -- to control for different #s of neurons between recs.
-            X_data = (
-                pd.DataFrame(X_data).T.sample(n=bootstrap_size, replace=True).T.values
-            )
-
-        # Load in Y_data (visual stimulus identity)
-        Y_data = get_Y_data(session, plane, stimulus_type, decode_dim)
-
-        # Check type of Y_data and make sure it is able to be decoded
-        # (i.e. has to all be discrete integer values, not continuous)
-        if type(Y_data[0]) is not int:
-            lab_enc = preprocessing.LabelEncoder()
-            Y_data = lab_enc.fit_transform(Y_data)
-
-        # Split data into training and test sets
-        n1 = math.floor(len(X_data) * 0.8)
-        x_train = X_data[:n1, :]
-        y_train = Y_data[:n1]
-        x_test = X_data[n1:, :]
-        y_test = Y_data[n1:]
-
-        # Figure out best # of neighbors to use
-        knn, best_k = knn_cross_validation(max_neighbors, metric, x_train, y_train)
-        knn.fit(x_train, y_train)
-        y_pred_train = knn.predict(x_train)
-        y_pred_test = knn.predict(x_test)
-        # Calculate accuracy scores
-        train_accuracy = metrics.accuracy_score(y_train, y_pred_train)
-        test_accuracy = metrics.accuracy_score(y_test, y_pred_test)
-
-        # Calculate 5-fold cross validation scores
-        fold_scores = cross_val_score(knn, X_data, Y_data, cv=5)
-
-        # Save cross-val scores, mean of scores, and std of scores
-        test_accuracies.append(fold_scores)
-        test_accuracies_mean.append(np.mean(fold_scores))
-        test_accuracies_std.append(np.std(fold_scores))
-        num_k_neighbors.append(best_k)
-
-        # Shuffle data and perform same decoding for comparison
-        X_data = np.random.permutation(X_data)
-
-        # Figure out best # of neighbors to use
-        knn, best_k = knn_cross_validation(max_neighbors, metric, X_data, Y_data)
-
-        # Calculate 5-fold cross validation scores
-        fold_scores = cross_val_score(knn, X_data, Y_data, cv=5)
-
-        # Save cross-val scores, mean of scores, and std of scores
-        shuf_test_accuracies.append(fold_scores)
-        shuf_test_accuracies_mean.append(np.mean(fold_scores))
-        shuf_test_accuracies_std.append(np.std(fold_scores))
-        shuf_num_k_neighbors.append(best_k)
-
-        # Save info about recording + decoding #
-        mouse_ids.append(session.get_mouse_id())
-        column_ids.append(session.get_column_id())
-        volume_ids.append(session.get_volume_id())
-        plane_group.append(plane)
-        repetition_nums.append(i)
-
-    # Save results in dataframe
-    indiv_results_df = pd.DataFrame(
-        data=list(
-            zip(
-                mouse_ids,
-                column_ids,
-                volume_ids,
-                plane_group,
-                repetition_nums,
-                test_accuracies,
-                test_accuracies_mean,
-                test_accuracies_std,
-                shuf_test_accuracies,
-                shuf_test_accuracies_mean,
-                shuf_test_accuracies_std,
-                num_k_neighbors,
-                shuf_num_k_neighbors,
-            )
-        ),
-        columns=[
-            "mouse_id",
-            "column_id",
-            "volume_id",
-            "plane",
-            "repetition_num",
-            "test_accuracies",
-            "test_accuracies_mean",
-            "test_accuracies_std",
-            "shuf_test_accuracies",
-            "shuf_test_accuracies_mean",
-            "shuf_test_accuracies_std",
-            "num_k_neighbors",
-            "shuf_num_k_neighbors",
-        ],
-    )
-
-    if save_decoding:
-        if not os.path.exists(decoding_folder_name):
-            os.makedirs(decoding_folder_name)
-        pd.to_pickle(
-            indiv_results_df,
-            os.path.join(decoding_folder_name, file_name),
-        )
-
-    return indiv_results_df
-
-
-def run_decoding_v2(
-    session,
+def run_decoding_one_plane(
+    session_id,
     plane,
     stimulus_type,
     repetitions,
@@ -497,6 +303,36 @@ def run_decoding_v2(
     results_folder="/home/naomi/Desktop/data/decoding_results",
     tag=None,
 ):
+
+    # Load the session using the client
+    try:
+        session = client.load_ophys_session(session_id)
+        print(f"Performing decoding for session {session_id}")
+    except ValueError as e:
+        print(f"Error loading session {session_id}: {e}")
+        return None
+
+    # Check if the session has the passed in plane
+    if plane not in session.get_planes():
+        print(f"Plane {plane} not found in session {session_id}. Skipping decoding.")
+        return None
+
+    # Figure out if we need to choose "unduplicated" ROIs -- note all ROIs in column 1 are set to "duplicated", but only the 2p data is actually duplicated
+    # unduplicated = True --> use unduplicated ROIs for decoding (e.g. 2p data, not from column 1)
+    # unduplicated = False --> use duplicated ROIs for decoding (e.g. 3p data)
+    column = session.get_column_id()
+    num_planes = len(session.get_planes())
+    if column != 1:
+        unduplicated = True
+    elif column == 1 and num_planes > 1:
+        print(
+            "Skipping decoding for 2p sessions in column 1 -- these have all duplicated ROIs"
+        )
+        return (
+            None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
+        )
+    elif column == 1 and num_planes == 1:
+        unduplicated = False
     if tag:
         decoding_folder_name = os.path.join(
             results_folder,
@@ -689,8 +525,8 @@ def run_decoding_v2(
     return indiv_results_df
 
 
-def run_decoding_v3(
-    session,
+def run_decoding_across_planes(
+    session_id,
     planes,
     stimulus_type,
     repetitions,
@@ -699,16 +535,46 @@ def run_decoding_v3(
     bootstrap=True,
     bootstrap_size=250,
     metrics_df=None,
-    unduplicated=False,
     folder_name="/home/naomi/Desktop/data",
     save_decoding=True,
     results_folder="/home/naomi/Desktop/data/decoding_results",
     tag=None,
 ):
 
+    # Load the session using the client
+    try:
+        session = client.load_ophys_session(session_id)
+        print(f"Performing decoding for session {session_id}")
+    except ValueError as e:
+        print(f"Error loading session {session_id}: {e}")
+        return None
+
     # Check that the correct number of planes is provided
     if len(planes) != 3:
         raise ValueError("Please provide exactly 3 planes for decoding.")
+
+    if len(session.get_planes()) < 3:
+        print(
+            f"Session {session_id} does not have enough planes for decoding. Skipping."
+        )
+        return None
+
+    # Figure out if we need to choose "unduplicated" ROIs -- note all ROIs in column 1 are set to "duplicated", but only the 2p data is actually duplicated
+    # unduplicated = True --> use unduplicated ROIs for decoding (e.g. 2p data, not from column 1)
+    # unduplicated = False --> use duplicated ROIs for decoding (e.g. 3p data)
+    column = session.get_column_id()
+    num_planes = len(session.get_planes())
+    if column != 1:
+        unduplicated = True
+    elif column == 1 and num_planes > 1:
+        print(
+            "Skipping decoding for 2p sessions in column 1 -- these have all duplicated ROIs"
+        )
+        return (
+            None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
+        )
+    elif column == 1 and num_planes == 1:
+        unduplicated = False
 
     if tag:
         decoding_folder_name = os.path.join(
@@ -924,27 +790,3 @@ def run_decoding_v3(
         )
 
     return indiv_results_df
-
-
-def decoding_wrapper(input):
-    # Take input and break up into individual inputs to run the decoding
-    run_decoding(
-        session=input[0],
-        planes=input[1],
-        stimulus_type=input[2],
-        repetitions=input[3],
-        decode_dim=input[4],
-        cross_validation=input[5],
-        folds=input[6],
-        max_neighbors=input[7],
-        metric=input[8],
-        test_size=input[9],
-        bootstrap=input[10],
-        bootstrap_size=input[11],
-        metrics_df=input[12],
-        unduplicated=input[13],
-        folder_name=input[14],
-        save_decoding=input[15],
-        results_folder=input[16],
-        tag=input[17],
-    )
