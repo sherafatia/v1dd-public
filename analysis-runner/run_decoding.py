@@ -39,9 +39,18 @@ def depth_volume_mapping_multiplanes(a, b):
 
     return depth_values[a][b[1]]
 
+### Create logging file
+
+
+import logging
+from datetime import datetime
+log_dir = os.path.join(ARTIFACT_DIR, "decoding_analyses/logs")
+log_queue, listener = start_log(log_dir)
+setup_worker_logger(log_queue)
 
 ## Decoding parameters
 repetitions = 1000  # Number of bootstrap repetitions
+bootstrap = True  # If True, perform bootstrap sampling; if False, use all ROIs in the session
 bootstrap_size = 250  # Size of bootstrap sample; or threshold for minimum number of ROIs to perform decoding (if bootstrap=False)
 tag = "2025_0728_4"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
 data_folder = "/home/naomi/Desktop/data"
@@ -70,6 +79,8 @@ decode_dims = {
     "natural_images": ["image_index"],
 }
 
+logging.info(f"Decoding parameters: {repetitions} repetitions, {bootstrap_size} bootstrap size, tag: {tag}, bootstrap, {bootstrap}, one_plane: {one_plane}")
+
 # apply multiprocessing to run decoding in parallel
 if one_plane:
     Parallel(n_jobs=-1)(
@@ -79,7 +90,7 @@ if one_plane:
             stimulus_type=stim_type,
             repetitions=repetitions,
             decode_dim=dim,
-            bootstrap=False,
+            bootstrap=bootstrap,
             bootstrap_size=bootstrap_size,
             metrics_df=metrics_df,
             folder_name=data_folder,
@@ -100,13 +111,14 @@ else:
             stimulus_type=stim_type,
             repetitions=repetitions,
             decode_dim=dim,
-            bootstrap=True,
+            bootstrap=bootstrap,
             bootstrap_size=bootstrap_size,
             metrics_df=metrics_df,
             folder_name=data_folder,
             save_decoding=True,
             results_folder=results_folder,
             tag=tag,
+            log=True,
         )
         for sess in client.get_all_session_ids()
         for planes in [[1, 2, 3], [4, 5, 6]]
@@ -149,4 +161,6 @@ all_results_path = os.path.join(
     ARTIFACT_DIR, f"decoding_analyses/{tag}_Boot{bootstrap_size}_Reps{repetitions}.pkl"
 )
 all_results_df.to_pickle(all_results_path)
-print(f"Saved all results in a dataframe: {all_results_path}")
+logging.info(f"Saved all results in a dataframe: {all_results_path}")
+
+stop_log(log_queue, listener)
