@@ -1565,7 +1565,7 @@ if __name__ == "__main__":
     # apply multiprocessing to run decoding in parallel
     if multi_stim:
         if one_plane:
-            Parallel(n_jobs=-1)(
+            Parallel(n_jobs=10)(
                 delayed(run_decoding_multistim_one_plane)(
                     session_id=session_id,
                     plane=plane,
@@ -1586,7 +1586,7 @@ if __name__ == "__main__":
                 for stim_type in stim_types
             )
         else:
-            Parallel(n_jobs=-1)(
+            Parallel(n_jobs=10)(
                 delayed(run_decoding_multistim_across_planes)(
                     session_id=session_id,
                     planes=planes,
@@ -1609,7 +1609,7 @@ if __name__ == "__main__":
             )
     else:
         if one_plane:
-            Parallel(n_jobs=-1)(
+            Parallel(n_jobs=10)(
                 delayed(run_decoding_one_plane)(
                     session_id=session_id,
                     plane=plane,
@@ -1630,7 +1630,7 @@ if __name__ == "__main__":
                 for dim in decode_dims[stim_type]
             )
         else:
-            Parallel(n_jobs=-1)(
+            Parallel(n_jobs=10)(
                 delayed(run_decoding_across_planes)(
                     session_id=session_id,
                     planes=planes,
