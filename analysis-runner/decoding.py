@@ -19,35 +19,37 @@ from joblib import Parallel, delayed
 from logging.handlers import QueueHandler, QueueListener
 
 
-
 # Global queue (will be set in main)
 log_queue = None
 
-# Global client 
+# Global client
 client = OPhysClient("/home/naomi/Desktop/data/V1dd_nwbs")
 
 
 def listener_config(log_file):
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     fh = logging.FileHandler(log_file)
     fh.setFormatter(formatter)
     return fh
 
+
 def setup_worker_logger():
     global log_queue
     # Suppress warnings that pop up during train_test_split (mostly because of NS Set 1 -- some images appear 2, 3, 4 times etc)
-    warnings.filterwarnings("ignore", message="The least populated class in y has only") 
+    warnings.filterwarnings("ignore", message="The least populated class in y has only")
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     root.handlers = []
     handler = QueueHandler(log_queue)
     root.addHandler(handler)
 
+
 def setup_main_logger(log_file, log_queue):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     handler = QueueHandler(log_queue)
     logger.addHandler(handler)
+
 
 def depth_volume_mapping_oneplane(volume_id, plane):
     depth_values = {
@@ -81,6 +83,7 @@ def depth_volume_mapping_multiplanes(a, b):
     }
 
     return depth_values[a][b[1]]
+
 
 def get_mouse_name(mouse_id):
 
@@ -622,9 +625,13 @@ def run_decoding_across_planes(
         raise ValueError("Please provide exactly 3 planes for decoding.")
 
     if len(session.get_planes()) < 3:
-        logging.info(
-            f"{session_id}, {planes}: Not have enough planes for decoding."
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Not have enough planes for decoding."
+            )
+            if log
+            else None
+        )
         return None
 
     # Figure out if we need to choose "unduplicated" ROIs -- note all ROIs in column 1 are set to "duplicated", but only the 2p data is actually duplicated
@@ -635,7 +642,13 @@ def run_decoding_across_planes(
     if column != 1:
         unduplicated = True
     elif column == 1 and num_planes > 1:
-        logging.info(f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs.") if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs."
+            )
+            if log
+            else None
+        )
         return (
             None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
         )
@@ -716,12 +729,22 @@ def run_decoding_across_planes(
 
     # Check if there is enough X_data for decoding
     if X_data is None:
-        logging.info(f"{session_id}, {planes}: Cannot find any X data...cannot perform decoding") if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Cannot find any X data...cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if np.shape(X_data)[1] < bootstrap_size:
-        logging.info(
-            f"{session_id}, {planes}: Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Not enough X_data, only have {np.shape(X_data)[1]} rois, cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
 
     # Load and check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
@@ -729,11 +752,15 @@ def run_decoding_across_planes(
     Y_data = get_Y_data(session, planes[0], stimulus_type, decode_dim)
     if Y_data is None:
         return None
-    
+
     for i in range(repetitions):
-        if (i+1) % int(repetitions / 20) == 0 or i == repetitions - 1:
+        if (i + 1) % int(repetitions / 20) == 0 or i == repetitions - 1:
             # Log progress every 5% of repetitions or at the last repetition
-            logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}") if log else None
+            (
+                logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}")
+                if log
+                else None
+            )
         if (
             bootstrap
         ):  # select w/ replacement -- to control for different #s of neurons between recs.
@@ -856,7 +883,11 @@ def run_decoding_across_planes(
             indiv_results_df,
             os.path.join(decoding_folder_name, file_name),
         )
-    logging.info(f"{session_id}, {planes}: Decoding completed and saved") if log else None
+    (
+        logging.info(f"{session_id}, {planes}: Decoding completed and saved")
+        if log
+        else None
+    )
 
     return indiv_results_df
 
@@ -888,7 +919,7 @@ def run_decoding_multistim_one_plane(
     except ValueError as e:
         logging.error(f"{session_id}: {e}: Error loading") if log else None
         return None
-    
+
     # Check if the session has the passed in plane
     if plane not in session.get_planes():
         logging.info(f"{session_id}: Plane {plane} not found") if log else None
@@ -902,7 +933,13 @@ def run_decoding_multistim_one_plane(
     if column != 1:
         unduplicated = True
     elif column == 1 and num_planes > 1:
-        logging.info(f"{session_id}, {plane}: 2p session in column 1, no unduplicated ROIs.") if log else None
+        (
+            logging.info(
+                f"{session_id}, {plane}: 2p session in column 1, no unduplicated ROIs."
+            )
+            if log
+            else None
+        )
         return (
             None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
         )
@@ -977,20 +1014,40 @@ def run_decoding_multistim_one_plane(
 
     # Check if there is enough X_data for decoding
     if X_data_training is None:
-        logging.info(f"{session_id}, {plane}: Cannot find any X data (training)...cannot perform decoding") if log else None
+        (
+            logging.info(
+                f"{session_id}, {plane}: Cannot find any X data (training)...cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if np.shape(X_data_training)[1] < bootstrap_size:
-        logging.info(
-            f"{session_id}, {plane}: Not enough X_data (training), only have {np.shape(X_data_training)[1]} rois, cannot perform decoding"
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {plane}: Not enough X_data (training), only have {np.shape(X_data_training)[1]} rois, cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if X_data_testing is None:
-        logging.info(f"{session_id}, {plane}: Cannot find any X data (testing)...cannot perform decoding") if log else None
+        (
+            logging.info(
+                f"{session_id}, {plane}: Cannot find any X data (testing)...cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if np.shape(X_data_testing)[1] < bootstrap_size:
-        logging.info(
-            f"{session_id}, {plane}: Not enough X_data (testing), only have {np.shape(X_data_testing)[1]} rois, cannot perform decoding"
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {plane}: Not enough X_data (testing), only have {np.shape(X_data_testing)[1]} rois, cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
 
     # Load and check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
@@ -1003,7 +1060,7 @@ def run_decoding_multistim_one_plane(
         Y_data_training = lab_enc.fit_transform(Y_data_training)
     if Y_data_training is None:
         return None
-    
+
     # Load Y_data for testing (i.e. if there are corresponding visual stimuli for this session)
     Y_data_testing = get_Y_data(session, plane, stimulus_type_testing, decode_dim)
     if type(Y_data_testing[0]) is not int:
@@ -1011,20 +1068,30 @@ def run_decoding_multistim_one_plane(
         Y_data_testing = lab_enc.fit_transform(Y_data_testing)
     if Y_data_testing is None:
         return None
-    
+
     for i in range(repetitions):
         if repetitions > 50:
-            if (i+1) % int(repetitions / 20) == 0 or i == repetitions - 1:
+            if (i + 1) % int(repetitions / 20) == 0 or i == repetitions - 1:
                 # Log progress every 5% of repetitions or at the last repetition
-                logging.info(f"{session_id}, {plane}: repetition {i+1}/{repetitions}") if log else None
+                (
+                    logging.info(
+                        f"{session_id}, {plane}: repetition {i+1}/{repetitions}"
+                    )
+                    if log
+                    else None
+                )
         if (
             bootstrap
         ):  # select w/ replacement -- to control for different #s of neurons between recs.
             X_data_training_copy = (
-                pd.DataFrame(X_data_training).T.sample(n=bootstrap_size, replace=True).T.values
+                pd.DataFrame(X_data_training)
+                .T.sample(n=bootstrap_size, replace=True)
+                .T.values
             )
             X_data_testing_copy = (
-                pd.DataFrame(X_data_testing).T.sample(n=bootstrap_size, replace=True).T.values
+                pd.DataFrame(X_data_testing)
+                .T.sample(n=bootstrap_size, replace=True)
+                .T.values
             )
         else:
             X_data_training_copy = X_data_training.copy()
@@ -1038,7 +1105,7 @@ def run_decoding_multistim_one_plane(
             val_accuracies_folds, test_accuracies_folds, best_ks = (
                 [],
                 [],
-                [], 
+                [],
             )  # Store accuracies & best # of neighbors across the folds
             for fold in range(folds):
                 x_train, x_val, y_train, y_val = train_test_split(
@@ -1160,7 +1227,11 @@ def run_decoding_multistim_one_plane(
             indiv_results_df,
             os.path.join(decoding_folder_name, file_name),
         )
-    logging.info(f"{session_id}, {plane}: Decoding completed and saved") if log else None
+    (
+        logging.info(f"{session_id}, {plane}: Decoding completed and saved")
+        if log
+        else None
+    )
 
     return indiv_results_df
 
@@ -1199,9 +1270,13 @@ def run_decoding_multistim_across_planes(
         raise ValueError("Please provide exactly 3 planes for decoding.")
 
     if len(session.get_planes()) < 3:
-        logging.info(
-            f"{session_id}, {planes}: Not have enough planes for decoding."
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Not have enough planes for decoding."
+            )
+            if log
+            else None
+        )
         return None
 
     # Figure out if we need to choose "unduplicated" ROIs -- note all ROIs in column 1 are set to "duplicated", but only the 2p data is actually duplicated
@@ -1212,7 +1287,13 @@ def run_decoding_multistim_across_planes(
     if column != 1:
         unduplicated = True
     elif column == 1 and num_planes > 1:
-        logging.info(f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs.") if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs."
+            )
+            if log
+            else None
+        )
         return (
             None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
         )
@@ -1318,20 +1399,40 @@ def run_decoding_multistim_across_planes(
 
     # Check if there is enough X_data for decoding
     if X_data_training is None:
-        logging.info(f"{session_id}, {planes}: Cannot find any X data (training)...cannot perform decoding") if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Cannot find any X data (training)...cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if np.shape(X_data_training)[1] < bootstrap_size:
-        logging.info(
-            f"{session_id}, {planes}: Not enough X_data (training), only have {np.shape(X_data_training)[1]} rois, cannot perform decoding"
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Not enough X_data (training), only have {np.shape(X_data_training)[1]} rois, cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if X_data_testing is None:
-        logging.info(f"{session_id}, {planes}: Cannot find any X data (testing)...cannot perform decoding") if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Cannot find any X data (testing)...cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
     if np.shape(X_data_testing)[1] < bootstrap_size:
-        logging.info(
-            f"{session_id}, {planes}: Not enough X_data (testing), only have {np.shape(X_data_testing)[1]} rois, cannot perform decoding"
-        ) if log else None
+        (
+            logging.info(
+                f"{session_id}, {planes}: Not enough X_data (testing), only have {np.shape(X_data_testing)[1]} rois, cannot perform decoding"
+            )
+            if log
+            else None
+        )
         return None
 
     # Load and check to see if there is Y_data (i.e. if there are corresponding visual stimuli for this session)
@@ -1344,7 +1445,7 @@ def run_decoding_multistim_across_planes(
         Y_data_training = lab_enc.fit_transform(Y_data_training)
     if Y_data_training is None:
         return None
-    
+
     # Load Y_data for testing (i.e. if there are corresponding visual stimuli for this session)
     Y_data_testing = get_Y_data(session, planes[0], stimulus_type_testing, decode_dim)
     if type(Y_data_testing[0]) is not int:
@@ -1352,19 +1453,27 @@ def run_decoding_multistim_across_planes(
         Y_data_testing = lab_enc.fit_transform(Y_data_testing)
     if Y_data_testing is None:
         return None
-    
+
     for i in range(repetitions):
-        if (i+1) % int(repetitions / 20) == 0 or i == repetitions - 1:
+        if (i + 1) % int(repetitions / 20) == 0 or i == repetitions - 1:
             # Log progress every 5% of repetitions or at the last repetition
-            logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}") if log else None
+            (
+                logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}")
+                if log
+                else None
+            )
         if (
             bootstrap
         ):  # select w/ replacement -- to control for different #s of neurons between recs.
             X_data_training_copy = (
-                pd.DataFrame(X_data_training).T.sample(n=bootstrap_size, replace=True).T.values
+                pd.DataFrame(X_data_training)
+                .T.sample(n=bootstrap_size, replace=True)
+                .T.values
             )
             X_data_testing_copy = (
-                pd.DataFrame(X_data_testing).T.sample(n=bootstrap_size, replace=True).T.values
+                pd.DataFrame(X_data_testing)
+                .T.sample(n=bootstrap_size, replace=True)
+                .T.values
             )
         else:
             X_data_training_copy = X_data_training.copy()
@@ -1378,7 +1487,7 @@ def run_decoding_multistim_across_planes(
             val_accuracies_folds, test_accuracies_folds, best_ks = (
                 [],
                 [],
-                []
+                [],
             )  # Store accuracies & best # of neighbors across the folds
             for fold in range(folds):
                 x_train, x_val, y_train, y_val = train_test_split(
@@ -1500,7 +1609,11 @@ def run_decoding_multistim_across_planes(
             indiv_results_df,
             os.path.join(decoding_folder_name, file_name),
         )
-    logging.info(f"{session_id}, {planes}: Decoding completed and saved") if log else None
+    (
+        logging.info(f"{session_id}, {planes}: Decoding completed and saved")
+        if log
+        else None
+    )
 
     return indiv_results_df
 
@@ -1532,7 +1645,7 @@ if __name__ == "__main__":
     path_to_metrics = f"{data_folder}/all_metrics_240426.csv"
     results_folder = f"{data_folder}/decoding_results"
     one_plane = False  # If True, decode across a single plane; if False, decode across multiple planes (e.g. just 2p data)
-    multi_stim = False # If True, decode across multiple stimuli (e.g. DGW and DGF); if False, decode a single stimulus type (e.g. just DGW)
+    multi_stim = False  # If True, decode across multiple stimuli (e.g. DGW and DGF); if False, decode a single stimulus type (e.g. just DGW)
 
     ## Load in the client
     client = OPhysClient(path_to_nwbs)
@@ -1560,7 +1673,9 @@ if __name__ == "__main__":
         "natural_images": "natural_images_12",
     }
 
-    logging.info(f"Decoding parameters: {repetitions} repetitions, {bootstrap_size} bootstrap size, tag: {tag}, bootstrap, {bootstrap}, one_plane: {one_plane}, multi_stim: {multi_stim}")
+    logging.info(
+        f"Decoding parameters: {repetitions} repetitions, {bootstrap_size} bootstrap size, tag: {tag}, bootstrap, {bootstrap}, one_plane: {one_plane}, multi_stim: {multi_stim}"
+    )
 
     # apply multiprocessing to run decoding in parallel
     if multi_stim:
@@ -1615,7 +1730,7 @@ if __name__ == "__main__":
                     plane=plane,
                     stimulus_type=stim_type,
                     repetitions=repetitions,
-                    decode_dim=dim,
+                    decode_dim=decode_dims[stim_type],
                     bootstrap=bootstrap,
                     bootstrap_size=bootstrap_size,
                     metrics_df=metrics_df,
@@ -1627,7 +1742,6 @@ if __name__ == "__main__":
                 for session_id in client.get_all_session_ids()
                 for plane in [1, 2, 3, 4, 5, 6]
                 for stim_type in stim_types
-                for dim in decode_dims[stim_type]
             )
         else:
             Parallel(n_jobs=10)(
@@ -1636,7 +1750,7 @@ if __name__ == "__main__":
                     planes=planes,
                     stimulus_type=stim_type,
                     repetitions=repetitions,
-                    decode_dim=dim,
+                    decode_dim=decode_dims[stim_type],
                     bootstrap=bootstrap,
                     bootstrap_size=bootstrap_size,
                     metrics_df=metrics_df,
@@ -1649,13 +1763,14 @@ if __name__ == "__main__":
                 for session_id in client.get_all_session_ids()
                 for planes in [[1, 2, 3], [4, 5, 6]]
                 for stim_type in stim_types
-                for dim in decode_dims[stim_type]
             )
 
     # Convert results to DataFrame
     all_results_df = pd.DataFrame()
     for stim_type in stim_types:
-        decode_dim = decode_dims[stim_type]  # Assuming only one decode dimension per stim type
+        decode_dim = decode_dims[
+            stim_type
+        ]  # Assuming only one decode dimension per stim type
 
         if multi_stim:
             path_name = f"/home/naomi/Desktop/data/decoding_results/{tag}_TRAIN{stim_type}_TEST{multi_stim_pairs[stim_type]}_Boot{bootstrap_size}_Rep{repetitions}"
@@ -1668,9 +1783,7 @@ if __name__ == "__main__":
 
         if multi_stim:
             results_df["train_stim_type"] = stim_type
-            results_df["test_stim_type"] = (
-                multi_stim_pairs[stim_type]
-            )
+            results_df["test_stim_type"] = multi_stim_pairs[stim_type]
         else:
             results_df["stim_type"] = stim_type
         results_df["decode_dim"] = decode_dim
@@ -1691,7 +1804,8 @@ if __name__ == "__main__":
         )
 
     all_results_path = os.path.join(
-        ARTIFACT_DIR, f"decoding_analyses/{tag}_Boot{bootstrap_size}_Reps{repetitions}.pkl"
+        ARTIFACT_DIR,
+        f"decoding_analyses/{tag}_Boot{bootstrap_size}_Reps{repetitions}.pkl",
     )
     all_results_df.to_pickle(all_results_path)
     logging.info(f"Saved all results in a dataframe: {all_results_path}")
