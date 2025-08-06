@@ -1,3 +1,4 @@
+import gc
 import os
 import numpy as np
 import pandas as pd
@@ -502,7 +503,7 @@ def run_decoding_one_plane(
                     np.random.shuffle(y_train)
 
                 # Perform grid search for optimal k
-                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                param_grid = {"n_neighbors": list(range(1, 30))}
                 knn = KNeighborsClassifier(metric="correlation")
                 grid_search = GridSearchCV(
                     knn, param_grid, cv=folds, scoring="accuracy"
@@ -797,7 +798,7 @@ def run_decoding_across_planes(
                     np.random.shuffle(y_train)
 
                 # Perform grid search for optimal k
-                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                param_grid = {"n_neighbors": list(range(1, 30))}
                 knn = KNeighborsClassifier(metric="correlation")
                 grid_search = GridSearchCV(
                     knn, param_grid, cv=folds, scoring="accuracy"
@@ -1120,7 +1121,7 @@ def run_decoding_multistim_one_plane(
                     np.random.shuffle(y_train)
 
                 # Perform grid search for optimal k
-                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                param_grid = {"n_neighbors": list(range(1, 30))}
                 knn = KNeighborsClassifier(metric="correlation")
                 grid_search = GridSearchCV(
                     knn, param_grid, cv=folds, scoring="accuracy"
@@ -1252,6 +1253,7 @@ def run_decoding_multistim_across_planes(
     results_folder="/home/naomi/Desktop/data/decoding_results",
     tag=None,
     log=True,
+    chunk_range=None,
 ):
     if log_queue is not None:
         setup_worker_logger()
@@ -1259,7 +1261,7 @@ def run_decoding_multistim_across_planes(
     # Load the session using the client
     try:
         session = client.load_ophys_session(session_id)
-        logging.info(f"{session_id}, {planes}: Loaded") if log else None
+        # logging.info(f"{session_id}, {planes}: Loaded") if log else None
     except ValueError as e:
         logging.error(f"{session_id}: {e}: Error loading") if log else None
         return None
@@ -1287,13 +1289,13 @@ def run_decoding_multistim_across_planes(
     if column != 1:
         unduplicated = True
     elif column == 1 and num_planes > 1:
-        (
-            logging.info(
-                f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs."
-            )
-            if log
-            else None
-        )
+        # (
+        #     logging.info(
+        #         f"{session_id}, {planes}: 2p session in column 1, no unduplicated ROIs."
+        #     )
+        #     if log
+        #     else None
+        # )
         return (
             None  # skip all 2p sessions in column 1 -- these have all duplicated ROIs
         )
@@ -1311,7 +1313,10 @@ def run_decoding_multistim_across_planes(
             f"TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}",
         )
 
-    file_name = f"{get_session_id(session)}_planes{planes[0]}{planes[1]}{planes[2]}.pkl"
+    if chunk_range is None:
+        file_name = f"{get_session_id(session)}_planes{planes[0]}{planes[1]}{planes[2]}_reps0-{repetitions}.pkl"
+    else:
+        file_name = f"{get_session_id(session)}_planes{planes[0]}{planes[1]}{planes[2]}_reps{chunk_range[0]}-{chunk_range[1]}.pkl"
 
     # Check if the decoding results df is already calculated and saved locally
     if os.path.isfile(
@@ -1349,53 +1354,73 @@ def run_decoding_multistim_across_planes(
     shuf_num_k_neighbors = []
 
     # Load X_data (i.e. if there are neuron responses for this session)
-    X_data_training = get_X_data(
-        session=session,
-        plane=planes[0],
-        stimulus_type=stimulus_type_training,
-        metrics_df=metrics_df,
-        unduplicated=unduplicated,
-        folder_name=folder_name,
-    )
-    X_data_testing = get_X_data(
-        session=session,
-        plane=planes[0],
-        stimulus_type=stimulus_type_testing,
-        metrics_df=metrics_df,
-        unduplicated=unduplicated,
-        folder_name=folder_name,
-    )
+    # X_data_training = get_X_data(
+    #     session=session,
+    #     plane=planes[0],
+    #     stimulus_type=stimulus_type_training,
+    #     metrics_df=metrics_df,
+    #     unduplicated=unduplicated,
+    #     folder_name=folder_name,
+    # )
+    # X_data_testing = get_X_data(
+    #     session=session,
+    #     plane=planes[0],
+    #     stimulus_type=stimulus_type_testing,
+    #     metrics_df=metrics_df,
+    #     unduplicated=unduplicated,
+    #     folder_name=folder_name,
+    # )
 
-    for plane in planes[1:]:
-        # Concatenate the new plane's data to the existing X_data
-        X_data_training = np.concatenate(
-            (
-                X_data_training,
-                get_X_data(
-                    session=session,
-                    plane=plane,
-                    stimulus_type=stimulus_type_training,
-                    metrics_df=metrics_df,
-                    unduplicated=unduplicated,
-                    folder_name=folder_name,
+    X_data_training, X_data_testing = pd.DataFrame(), pd.DataFrame()
+    for plane in planes:
+        if len(X_data_training) == 0:
+            # If X_data_training is empty, initialize it with the first plane's data
+            X_data_training = get_X_data(
+                session=session,
+                plane=plane,
+                stimulus_type=stimulus_type_training,
+                metrics_df=metrics_df,
+                unduplicated=unduplicated,
+                folder_name=folder_name,
+            )
+            X_data_testing = get_X_data(
+                session=session,
+                plane=plane,
+                stimulus_type=stimulus_type_testing,
+                metrics_df=metrics_df,
+                unduplicated=unduplicated,
+                folder_name=folder_name,
+            )
+        else:
+            # Concatenate the new plane's data to the existing X_data
+            X_data_training = np.concatenate(
+                (
+                    X_data_training,
+                    get_X_data(
+                        session=session,
+                        plane=plane,
+                        stimulus_type=stimulus_type_training,
+                        metrics_df=metrics_df,
+                        unduplicated=unduplicated,
+                        folder_name=folder_name,
+                    ),
                 ),
-            ),
-            axis=1,
-        )
-        X_data_testing = np.concatenate(
-            (
-                X_data_testing,
-                get_X_data(
-                    session=session,
-                    plane=plane,
-                    stimulus_type=stimulus_type_testing,
-                    metrics_df=metrics_df,
-                    unduplicated=unduplicated,
-                    folder_name=folder_name,
+                axis=1,
+            )
+            X_data_testing = np.concatenate(
+                (
+                    X_data_testing,
+                    get_X_data(
+                        session=session,
+                        plane=plane,
+                        stimulus_type=stimulus_type_testing,
+                        metrics_df=metrics_df,
+                        unduplicated=unduplicated,
+                        folder_name=folder_name,
+                    ),
                 ),
-            ),
-            axis=1,
-        )
+                axis=1,
+            )
 
     # Check if there is enough X_data for decoding
     if X_data_training is None:
@@ -1454,27 +1479,22 @@ def run_decoding_multistim_across_planes(
     if Y_data_testing is None:
         return None
 
-    for i in range(repetitions):
-        if (i + 1) % int(repetitions / 20) == 0 or i == repetitions - 1:
-            # Log progress every 5% of repetitions or at the last repetition
-            (
-                logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}")
-                if log
-                else None
-            )
+    for i in range(chunk_range[0], chunk_range[1]):
+        # if (i + 1) % int(repetitions / 20) == 0 or i == repetitions - 1:
+        #     # Log progress every 5% of repetitions or at the last repetition
+        #     (
+        #         logging.info(f"{session_id}, {planes}: repetition {i+1}/{repetitions}")
+        #         if log
+        #         else None
+        #     )
         if (
             bootstrap
         ):  # select w/ replacement -- to control for different #s of neurons between recs.
-            X_data_training_copy = (
-                pd.DataFrame(X_data_training)
-                .T.sample(n=bootstrap_size, replace=True)
-                .T.values
+            cols = np.random.choice(
+                X_data_training.shape[1], bootstrap_size, replace=True
             )
-            X_data_testing_copy = (
-                pd.DataFrame(X_data_testing)
-                .T.sample(n=bootstrap_size, replace=True)
-                .T.values
-            )
+            X_data_training_copy = X_data_training[:, cols]
+            X_data_testing_copy = X_data_testing[:, cols]
         else:
             X_data_training_copy = X_data_training.copy()
             X_data_testing_copy = X_data_testing.copy()
@@ -1502,7 +1522,7 @@ def run_decoding_multistim_across_planes(
                     np.random.shuffle(y_train)
 
                 # Perform grid search for optimal k
-                param_grid = {"n_neighbors": list(range(1, len(y_train) // folds + 1))}
+                param_grid = {"n_neighbors": list(range(1, 30))}
                 knn = KNeighborsClassifier(metric="correlation")
                 grid_search = GridSearchCV(
                     knn, param_grid, cv=folds, scoring="accuracy"
@@ -1529,6 +1549,19 @@ def run_decoding_multistim_across_planes(
                 test_accuracies_folds.append(test_accuracy)
                 best_ks.append(best_k)
 
+                del (
+                    knn,
+                    grid_search,
+                    x_train,
+                    x_val,
+                    y_train,
+                    y_val,
+                    val_accuracy,
+                    test_accuracy,
+                    best_k,
+                )
+                gc.collect()
+
             # Save cross-val scores, mean of scores, and std of scores
             if shuf_type:
                 shuf_val_accuracies.append(val_accuracies_folds)
@@ -1553,6 +1586,16 @@ def run_decoding_multistim_across_planes(
         volume_ids.append(session.get_volume_id())
         plane_group.append(planes)
         repetition_nums.append(i)
+
+        # Clean up memory
+        del val_accuracies_folds, test_accuracies_folds, best_ks
+        del (
+            X_data_training_copy,
+            X_data_testing_copy,
+            Y_data_training_copy,
+            Y_data_testing_copy,
+        )
+        gc.collect()
 
     # Save results in dataframe
     indiv_results_df = pd.DataFrame(
@@ -1602,6 +1645,17 @@ def run_decoding_multistim_across_planes(
         ],
     )
 
+    # Clean up memory
+
+    del mouse_ids, column_ids, volume_ids, plane_group, repetition_nums
+    del val_accuracies, val_accuracies_mean, val_accuracies_std
+    del test_accuracies, test_accuracies_mean, test_accuracies_std
+    del shuf_val_accuracies, shuf_val_accuracies_mean, shuf_val_accuracies_std
+    del shuf_test_accuracies, shuf_test_accuracies_mean, shuf_test_accuracies_std
+    del num_k_neighbors, shuf_num_k_neighbors
+    del session
+    gc.collect()
+
     if save_decoding:
         if not os.path.exists(decoding_folder_name):
             os.makedirs(decoding_folder_name)
@@ -1610,7 +1664,9 @@ def run_decoding_multistim_across_planes(
             os.path.join(decoding_folder_name, file_name),
         )
     (
-        logging.info(f"{session_id}, {planes}: Decoding completed and saved")
+        logging.info(
+            f"{session_id}, {planes}, {chunk_range}: Decoding completed and saved"
+        )
         if log
         else None
     )
@@ -1619,13 +1675,14 @@ def run_decoding_multistim_across_planes(
 
 
 if __name__ == "__main__":
+    tag = "2025_0804_3"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
 
     # Set up logging
     log_dir = os.path.join(ARTIFACT_DIR, "decoding_analyses/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file = os.path.join(log_dir, f"decoding_{timestamp}.log")
+    log_file = os.path.join(log_dir, f"decoding_{tag}_{timestamp}.log")
     manager = Manager()
     log_queue = manager.Queue()
     file_handler = listener_config(log_file)
@@ -1639,13 +1696,14 @@ if __name__ == "__main__":
     repetitions = 1000  # Number of bootstrap repetitions
     bootstrap = True  # If True, perform bootstrap sampling; if False, use all ROIs in the session
     bootstrap_size = 250  # Size of bootstrap sample; or threshold for minimum number of ROIs to perform decoding (if bootstrap=False)
-    tag = "2025_0728_4"  # Tag for saving results -- will take form "{tag}_{stim_type}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}"
     data_folder = "/home/naomi/Desktop/data"
     path_to_nwbs = f"{data_folder}/V1dd_nwbs"
     path_to_metrics = f"{data_folder}/all_metrics_240426.csv"
     results_folder = f"{data_folder}/decoding_results"
     one_plane = False  # If True, decode across a single plane; if False, decode across multiple planes (e.g. just 2p data)
-    multi_stim = False  # If True, decode across multiple stimuli (e.g. DGW and DGF); if False, decode a single stimulus type (e.g. just DGW)
+    multi_stim = True  # If True, decode across multiple stimuli (e.g. DGW and DGF); if False, decode a single stimulus type (e.g. just DGW)
+    chunk_size = 25  # Size of chunks for parallel processing
+    repetition_chunks = [(i, i + chunk_size) for i in range(0, repetitions, chunk_size)]
 
     ## Load in the client
     client = OPhysClient(path_to_nwbs)
@@ -1680,7 +1738,7 @@ if __name__ == "__main__":
     # apply multiprocessing to run decoding in parallel
     if multi_stim:
         if one_plane:
-            Parallel(n_jobs=10)(
+            Parallel(n_jobs=30)(
                 delayed(run_decoding_multistim_one_plane)(
                     session_id=session_id,
                     plane=plane,
@@ -1701,7 +1759,7 @@ if __name__ == "__main__":
                 for stim_type in stim_types
             )
         else:
-            Parallel(n_jobs=10)(
+            Parallel(n_jobs=30)(
                 delayed(run_decoding_multistim_across_planes)(
                     session_id=session_id,
                     planes=planes,
@@ -1717,14 +1775,16 @@ if __name__ == "__main__":
                     results_folder=results_folder,
                     tag=tag,
                     log=True,
+                    chunk_range=chunk_range,
                 )
                 for session_id in client.get_all_session_ids()
                 for planes in [[1, 2, 3], [4, 5, 6]]
                 for stim_type in stim_types
+                for chunk_range in repetition_chunks
             )
     else:
         if one_plane:
-            Parallel(n_jobs=10)(
+            Parallel(n_jobs=30)(
                 delayed(run_decoding_one_plane)(
                     session_id=session_id,
                     plane=plane,
@@ -1744,7 +1804,7 @@ if __name__ == "__main__":
                 for stim_type in stim_types
             )
         else:
-            Parallel(n_jobs=10)(
+            Parallel(n_jobs=30)(
                 delayed(run_decoding_across_planes)(
                     session_id=session_id,
                     planes=planes,

@@ -1,0 +1,105 @@
+2025-07-29 15:40:57,523 - INFO - Decoding parameters: 1 repetitions, 1 bootstrap size, tag: 2025_0728_5, bootstrap, False, one_plane: True, multi_stim: True
+2025-07-29 15:41:00,638 - INFO - M409828_11, 1: Loaded
+2025-07-29 15:41:00,639 - INFO - M409828_11, 1: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,728 - INFO - M409828_12, 4: Loaded
+2025-07-29 15:41:00,729 - INFO - M409828_12, 4: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,730 - INFO - M409828_11, 2: Loaded
+2025-07-29 15:41:00,731 - INFO - M409828_11, 2: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,754 - INFO - M409828_12, 2: Loaded
+2025-07-29 15:41:00,756 - INFO - M409828_12, 2: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,806 - INFO - M409828_11, 4: Loaded
+2025-07-29 15:41:00,811 - INFO - M409828_11, 4: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,813 - INFO - M409828_12, 5: Loaded
+2025-07-29 15:41:00,814 - INFO - M409828_12, 5: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,814 - INFO - M409828_13, 1: Loaded
+2025-07-29 15:41:00,815 - INFO - M409828_13, 1: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,821 - INFO - M409828_11, 3: Loaded
+2025-07-29 15:41:00,823 - INFO - M409828_11, 3: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,828 - INFO - M409828_11, 6: Loaded
+2025-07-29 15:41:00,830 - INFO - M409828_11, 6: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,857 - INFO - M409828_14, 1: Loaded
+2025-07-29 15:41:00,859 - INFO - M409828_14, 1: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,887 - INFO - M409828_13, 5: Loaded
+2025-07-29 15:41:00,889 - INFO - M409828_13, 5: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,893 - INFO - M409828_11, 5: Loaded
+2025-07-29 15:41:00,895 - INFO - M409828_11, 5: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,908 - INFO - M409828_16, 3: Loaded
+2025-07-29 15:41:00,919 - INFO - M409828_12, 1: Loaded
+2025-07-29 15:41:00,924 - INFO - M409828_12, 1: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,929 - INFO - M409828_12, 3: Loaded
+2025-07-29 15:41:00,936 - INFO - M409828_12, 3: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,936 - INFO - M409828_16, 4: Loaded
+2025-07-29 15:41:00,932 - INFO - M409828_14, 6: Loaded
+2025-07-29 15:41:00,938 - INFO - M409828_14, 6: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,939 - INFO - M409828_12, 6: Loaded
+2025-07-29 15:41:00,944 - INFO - M409828_12, 6: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:00,967 - INFO - M409828_16, 5: Loaded
+2025-07-29 15:41:01,007 - INFO - M409828_14, 3: Loaded
+2025-07-29 15:41:01,029 - INFO - M409828_14, 3: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,009 - INFO - M409828_13, 3: Loaded
+2025-07-29 15:41:01,036 - INFO - M409828_13, 3: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,055 - INFO - M409828_15, 3: Loaded
+2025-07-29 15:41:01,082 - INFO - M409828_15, 3: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,074 - INFO - M409828_16, 6: Loaded
+2025-07-29 15:41:01,074 - INFO - M409828_15, 6: Loaded
+2025-07-29 15:41:01,085 - INFO - M409828_15, 6: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,071 - INFO - M409828_15, 1: Loaded
+2025-07-29 15:41:01,089 - INFO - M409828_15, 1: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,076 - INFO - M409828_15, 5: Loaded
+2025-07-29 15:41:01,092 - INFO - M409828_15, 5: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,083 - INFO - M409828_14, 2: Loaded
+2025-07-29 15:41:01,114 - INFO - M409828_14, 2: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,088 - INFO - M409828_17, 1: Loaded
+2025-07-29 15:41:01,079 - INFO - M409828_15, 2: Loaded
+2025-07-29 15:41:01,106 - INFO - M409828_13, 4: Loaded
+2025-07-29 15:41:01,127 - INFO - M409828_15, 2: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,127 - INFO - M409828_13, 4: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,113 - INFO - M409828_17, 2: Loaded
+2025-07-29 15:41:01,139 - INFO - M409828_17, 6: Loaded
+2025-07-29 15:41:01,125 - INFO - M409828_13, 2: Loaded
+2025-07-29 15:41:01,142 - INFO - M409828_13, 2: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,134 - INFO - M409828_14, 5: Loaded
+2025-07-29 15:41:01,148 - INFO - M409828_14, 5: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,139 - INFO - M409828_17, 3: Loaded
+2025-07-29 15:41:01,144 - INFO - M409828_15, 4: Loaded
+2025-07-29 15:41:01,153 - INFO - M409828_15, 4: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,145 - INFO - M409828_17, 4: Loaded
+2025-07-29 15:41:01,154 - INFO - M409828_18, 1: Loaded
+2025-07-29 15:41:01,150 - INFO - M409828_17, 5: Loaded
+2025-07-29 15:41:01,184 - INFO - M409828_18, 4: Loaded
+2025-07-29 15:41:01,188 - INFO - M409828_18, 3: Loaded
+2025-07-29 15:41:01,169 - INFO - M409828_18, 2: Loaded
+2025-07-29 15:41:01,202 - INFO - M409828_18, 5: Loaded
+2025-07-29 15:41:01,202 - INFO - M409828_18, 6: Loaded
+2025-07-29 15:41:01,205 - INFO - M409828_19, 1: Loaded
+2025-07-29 15:41:01,212 - INFO - M409828_19, 2: Loaded
+2025-07-29 15:41:01,222 - INFO - M409828_19, 3: Loaded
+2025-07-29 15:41:01,235 - INFO - M409828_19, 4: Loaded
+2025-07-29 15:41:01,245 - INFO - M409828_13, 6: Loaded
+2025-07-29 15:41:01,246 - INFO - M409828_13, 6: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,247 - INFO - M409828_19, 5: Loaded
+2025-07-29 15:41:01,257 - INFO - M409828_19, 6: Loaded
+2025-07-29 15:41:01,270 - INFO - M409828_1a, 1: Loaded
+2025-07-29 15:41:01,282 - INFO - M409828_1a, 2: Loaded
+2025-07-29 15:41:01,283 - INFO - M409828_14, 4: Loaded
+2025-07-29 15:41:01,284 - INFO - M409828_14, 4: 2p session in column 1, no unduplicated ROIs.
+2025-07-29 15:41:01,287 - INFO - M409828_1a, 3: Loaded
+2025-07-29 15:41:01,296 - INFO - M409828_1a, 4: Loaded
+2025-07-29 15:41:01,308 - INFO - M409828_1a, 5: Loaded
+2025-07-29 15:41:01,316 - INFO - M409828_1a, 6: Loaded
+2025-07-29 15:41:01,327 - INFO - M409828_1b, 1: Loaded
+2025-07-29 15:41:01,334 - INFO - M409828_1b, 2: Loaded
+2025-07-29 15:41:01,341 - INFO - M409828_1b, 3: Loaded
+2025-07-29 15:41:01,352 - INFO - M409828_1b, 4: Loaded
+2025-07-29 15:41:01,362 - INFO - M409828_1b, 5: Loaded
+2025-07-29 15:41:01,368 - INFO - M409828_1b, 6: Loaded
+2025-07-29 15:41:01,375 - INFO - M409828_1c, 1: Loaded
+2025-07-29 15:41:01,383 - INFO - M409828_1c, 2: Loaded
+2025-07-29 15:41:01,390 - INFO - M409828_1c, 3: Loaded
+2025-07-29 15:41:01,398 - INFO - M409828_1c, 4: Loaded
+2025-07-29 15:41:01,407 - INFO - M409828_1c, 5: Loaded
+2025-07-29 15:41:01,413 - INFO - M409828_1c, 6: Loaded
+2025-07-29 15:41:01,422 - INFO - M409828_1d, 1: Loaded
+2025-07-29 15:41:01,429 - INFO - M409828_1d, 2: Loaded
+2025-07-29 15:41:01,443 - INFO - M409828_1d, 3: Loaded
+2025-07-29 15:41:01,452 - INFO - M409828_1d, 4: Loaded
