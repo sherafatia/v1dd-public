@@ -1,1 +1,17 @@
-/home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/decoding.py
+#### Different stim_test and stim_train: no bootstrap, 1=bootstrap_size, 1 repetition, 1 plane ####
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --one_plane --stim_train drifting_gratings_full --stim_test drifting_gratings_windowed
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --one_plane --stim_train drifting_gratings_windowed --stim_test drifting_gratings_full
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --one_plane --stim_train natural_images_12 --stim_test natural_images
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --one_plane --stim_train natural_images --stim_test natural_images_12
+
+#### Different stim_test and stim_train: no bootstrap, 1=boostrap_size, 1 repetition, 3 planes ####
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --stim_train drifting_gratings_full --stim_test drifting_gratings_windowed
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --stim_train drifting_gratings_windowed --stim_test drifting_gratings_full
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --stim_train natural_images_12 --stim_test natural_images
+# /home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1 --bootstrap_size 1 --stim_train natural_images --stim_test natural_images_12
+
+#### Different stim_test and stim_train: yes bootstrap, 250=bootstrap_size, 1000 repetitions, 3 planes ####
+/home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1000 --bootstrap --bootstrap_size 250 --stim_train drifting_gratings_full --stim_test drifting_gratings_windowed
+/home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1000 --bootstrap --bootstrap_size 250 --stim_train drifting_gratings_windowed --stim_test drifting_gratings_full
+/home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1000 --bootstrap --bootstrap_size 250 --stim_train natural_images_12 --stim_test natural_images
+/home/naomi/anaconda3/envs/v1dd-public-2/bin/python /home/naomi/Desktop/code/v1dd-public/analysis-runner/comb_decoding.py --tag 2025-08-08_2 --repetitions 1000 --bootstrap --bootstrap_size 250 --stim_train natural_images --stim_test natural_images_12
