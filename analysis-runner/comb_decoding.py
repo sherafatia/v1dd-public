@@ -372,6 +372,7 @@ def run_decoding(
     results_folder="/home/naomi/Desktop/data/decoding_results",
     tag=None,
     log=True,
+    match_trials=False,
 ):
 
     ############################## Prior to decoding, perform initialization tests ##############################
@@ -402,12 +403,28 @@ def run_decoding(
             )
             return None
         else:
-            (logging.info(f"{session_id}, {planes}: One plane provided, decoding will be performed on this plane.") if log else None)
+            (
+                logging.info(
+                    f"{session_id}, {planes}: One plane provided, decoding will be performed on this plane."
+                )
+                if log
+                else None
+            )
     elif num_planes_in_session == 1 and num_planes_provided > 1:
-        (logging.error(f'{session_id}, {planes}: Only one plane in session, but multiple planes provided') if log else None)
+        (
+            logging.error(
+                f"{session_id}, {planes}: Only one plane in session, but multiple planes provided"
+            )
+            if log
+            else None
+        )
         return None
     else:
-        (logging.info(f"{session_id}, {planes}: Planes provided are in session.") if log else None)
+        (
+            logging.info(f"{session_id}, {planes}: Planes provided are in session.")
+            if log
+            else None
+        )
 
     # Check if ROIs are unduplicated or duplicated (i.e. 2p or 3p data, respectively)
     column = session.get_column_id()
@@ -429,15 +446,27 @@ def run_decoding(
 
     # Set up decoding folder name based on parameters
     if tag:
-        decoding_folder_name = os.path.join(
-            results_folder,
-            f"{tag}_TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}",
-        )
+        if match_trials:
+            decoding_folder_name = os.path.join(
+                results_folder,
+                f"{tag}_TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}_MatchTrials",
+            )
+        else:
+            decoding_folder_name = os.path.join(
+                results_folder,
+                f"{tag}_TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}",
+            )
     else:
-        decoding_folder_name = os.path.join(
-            results_folder,
-            f"TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}",
-        )
+        if match_trials:
+            decoding_folder_name = os.path.join(
+                results_folder,
+                f"TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}_MatchTrials",
+            )
+        else:
+            decoding_folder_name = os.path.join(
+                results_folder,
+                f"TRAIN{stimulus_type_training}_TEST{stimulus_type_testing}_{decode_dim}_Boot{bootstrap_size}_Rep{repetitions}_NumPlanes{num_planes_provided}",
+            )
     if not os.path.exists(decoding_folder_name):
         os.makedirs(decoding_folder_name)
 
@@ -446,14 +475,14 @@ def run_decoding(
     file_name = os.path.join(decoding_folder_name, file_name)
 
     # Check if the decoding results df is already calculated and saved locally
-    if os.path.isfile(file_name):
-        indiv_results_df = pd.read_pickle(file_name)
-        (
-            logging.info(f"{session_id}: Decoding results already exist. Returning df.")
-            if log
-            else None
-        )
-        return indiv_results_df
+    # if os.path.isfile(file_name):
+    #     indiv_results_df = pd.read_pickle(file_name)
+    #     (
+    #         logging.info(f"{session_id}: Decoding results already exist. Returning df.")
+    #         if log
+    #         else None
+    #     )
+    #     return indiv_results_df
 
     ############################## Decoding starts here ##############################
     (
@@ -478,13 +507,13 @@ def run_decoding(
         else:
             # Concatenate the new plane's data to the existing X_data_training
             X_data_new = get_X_data(
-                        session=session,
-                        plane=p,
-                        stimulus_type=stimulus_type_training,
-                        metrics_df=metrics_df,
-                        unduplicated=unduplicated,
-                        folder_name=data_folder,
-                    )
+                session=session,
+                plane=p,
+                stimulus_type=stimulus_type_training,
+                metrics_df=metrics_df,
+                unduplicated=unduplicated,
+                folder_name=data_folder,
+            )
             if len(X_data_new) > 0:
                 # Only concatenate if the new data is not empty
                 X_data_training = np.concatenate((X_data_training, X_data_new), axis=1)
@@ -507,16 +536,18 @@ def run_decoding(
             else:
                 # Concatenate the new plane's data to the existing X_data_testing
                 X_data_new = get_X_data(
-                            session=session,
-                            plane=p,
-                            stimulus_type=stimulus_type_testing,
-                            metrics_df=metrics_df,
-                            unduplicated=unduplicated,
-                            folder_name=data_folder,
-                        )
+                    session=session,
+                    plane=p,
+                    stimulus_type=stimulus_type_testing,
+                    metrics_df=metrics_df,
+                    unduplicated=unduplicated,
+                    folder_name=data_folder,
+                )
                 if len(X_data_new) > 0:
                     # Only concatenate if the new data is not empty
-                    X_data_testing = np.concatenate((X_data_testing, X_data_new), axis=1)
+                    X_data_testing = np.concatenate(
+                        (X_data_testing, X_data_new), axis=1
+                    )
 
     if X_data_training is None:
         return None
@@ -539,9 +570,6 @@ def run_decoding(
         stimulus_type=stimulus_type_training,
         decode_dim=decode_dim,
     )
-    if type(Y_data_training[0]) is not int:
-        encoder = preprocessing.LabelEncoder()
-        Y_data_training = encoder.fit_transform(Y_data_training)
     if Y_data_training is None:
         return None
 
@@ -554,11 +582,44 @@ def run_decoding(
             stimulus_type=stimulus_type_testing,
             decode_dim=decode_dim,
         )
-        if type(Y_data_testing[0]) is not int:
-            encoder = preprocessing.LabelEncoder()
-            Y_data_testing = encoder.fit_transform(Y_data_testing)
         if Y_data_testing is None:
             return None
+
+    # Subset the data so that both the training and testing data have the same directions / image indices
+    if stimulus_type_training != stimulus_type_testing and match_trials:
+        (
+            logging.info(
+                f"{session_id}: Matching trials between training and testing data"
+            )
+            if log
+            else None
+        )
+        # Figure out which indices are in both y_data and y_data_other
+        unique_trials_training = np.unique(Y_data_training)
+        unique_trials_testing = np.unique(Y_data_testing)
+        common_indices = np.intersect1d(unique_trials_training, unique_trials_testing)
+
+        (
+            logging.info(
+                f"{session_id}, {planes}: Original training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
+            )
+            if log
+            else None
+        )
+
+        # Subset X_data and Y_data to only include common trial identities
+        X_data_training = X_data_training[np.isin(Y_data_training, common_indices), :]
+        X_data_testing = X_data_testing[np.isin(Y_data_testing, common_indices), :]
+        Y_data_training = Y_data_training[np.isin(Y_data_training, common_indices)]
+        Y_data_testing = Y_data_testing[np.isin(Y_data_testing, common_indices)]
+
+        (
+            logging.info(
+                f"{session_id}, {planes}: New training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
+            )
+            if log
+            else None
+        )
 
     all_val_accuracies, all_test_accuracies, all_best_ks = [], [], []
     all_shuf_val_accuracies, all_shuf_test_accuracies, all_shuf_best_ks = [], [], []
@@ -673,20 +734,16 @@ def run_decoding(
             del (val_accuracies, test_accuracies, best_ks)
 
     # Save info about recording + decoding #
-    mouse_ids = np.tile(session.get_mouse_id(), chunk_range[1] - chunk_range[0])
-    column_ids = np.tile(session.get_column_id(), chunk_range[1] - chunk_range[0])
-    volume_ids = np.tile(session.get_volume_id(), chunk_range[1] - chunk_range[0])
-    plane_ids = np.tile(planes, chunk_range[1] - chunk_range[0])
+    # mouse_ids = np.tile(session.get_mouse_id(), chunk_range[1] - chunk_range[0])
+    # column_ids = np.tile(session.get_column_id(), chunk_range[1] - chunk_range[0])
+    # volume_ids = np.tile(session.get_volume_id(), chunk_range[1] - chunk_range[0])
+    # plane_ids = np.tile(planes, chunk_range[1] - chunk_range[0])
     repetition_nums = np.tile(np.arange(repetitions), chunk_range[1] - chunk_range[0])
 
     # Create a DataFrame to store the results
     indiv_results_df = pd.DataFrame(
         data=list(
             zip(
-                mouse_ids,
-                column_ids,
-                volume_ids,
-                plane_ids,
                 repetition_nums,
                 all_val_accuracies,
                 all_test_accuracies,
@@ -697,10 +754,6 @@ def run_decoding(
             )
         ),
         columns=[
-            "mouse_id",
-            "column_id",
-            "volume_id",
-            "plane_id",
             "repetition_num",
             "val_accuracy",
             "test_accuracy",
@@ -710,6 +763,10 @@ def run_decoding(
             "shuf_best_k",
         ],
     )
+    indiv_results_df["mouse_id"] = session.get_mouse_id()
+    indiv_results_df["column_id"] = session.get_column_id()
+    indiv_results_df["volume_id"] = session.get_volume_id()
+    indiv_results_df["plane_id"] = "".join([str(p) for p in planes])
 
     # Save the results DataFrame to a pickle file
     if save_decoding:
@@ -727,7 +784,9 @@ def run_decoding(
 
 if __name__ == "__main__":
     # Load parameters from the command line or set them here
-    parser = argparse.ArgumentParser(prog='V1DD_Decoding', description="Decoding parameters")
+    parser = argparse.ArgumentParser(
+        prog="V1DD_Decoding", description="Decoding parameters"
+    )
     parser.add_argument("--tag", type=str, default=None, help="Tag for saving results")
     parser.add_argument(
         "--repetitions", type=int, default=1000, help="Number of bootstrap repetitions"
@@ -750,7 +809,10 @@ if __name__ == "__main__":
         help="Size of chunks for parallel processing",
     )
     parser.add_argument(
-        "-v", "--verbose", action=argparse.BooleanOptionalAction, help="Enable verbose logging"
+        "-v",
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        help="Enable verbose logging",
     )
     parser.add_argument(
         "--stim_train",
@@ -767,6 +829,11 @@ if __name__ == "__main__":
         "--one_plane",
         action=argparse.BooleanOptionalAction,
         help="If provided, decode only one plane; else, decode multiple planes (usually 3)",
+    )
+    parser.add_argument(
+        "--match_trials",
+        action=argparse.BooleanOptionalAction,
+        help="If provided, match trials between training and testing datasets",
     )
     args = parser.parse_args()
 
@@ -813,6 +880,7 @@ if __name__ == "__main__":
     path_to_metrics = f"{data_folder}/all_metrics_240426.csv"
     results_folder = f"{data_folder}/decoding_results"
     log = args.verbose
+    match_trials = True if args.match_trials is not None else False
 
     chunk_size = args.chunk_size
     if repetitions == 1:
@@ -838,7 +906,7 @@ if __name__ == "__main__":
         raise ValueError(f"Training stimulus type {stim_train} is not valid.")
     if stim_test not in decode_dims.keys():
         raise ValueError(f"Testing stimulus type {stim_test} is not valid.")
-    
+
     if stim_train != stim_test:
         if stim_test != multi_stim_pairs[stim_train]:
             raise ValueError(
@@ -863,6 +931,7 @@ if __name__ == "__main__":
         f"\nStimulus Type Testing: {stim_test}"
         f"\nOne Plane: {one_plane}"
         f"\nPlane List: {plane_list}"
+        f"\nMatch Trials: {match_trials}"
     )
     logging.info(
         f"Decoding parameters: {repetitions} repetitions, {bootstrap_size} bootstrap size, tag: {tag}, bootstrap, {bootstrap}, one_plane: {one_plane}"
@@ -887,6 +956,7 @@ if __name__ == "__main__":
             results_folder=results_folder,
             tag=tag,
             log=True,
+            match_trials=match_trials,
         )
         for session_id in client.get_all_session_ids()
         for planes in plane_list
