@@ -383,7 +383,7 @@ def run_decoding(
     # Load the session using the client
     try:
         session = client.load_ophys_session(session_id)
-        logging.info(f"{session_id}: Loaded") if log else None
+        # logging.info(f"{session_id}: Loaded") if log else None
     except Exception as e:
         logging.error(f"Error loading session {session_id}: {e}") if log else None
         return None
@@ -398,7 +398,7 @@ def run_decoding(
     num_planes_provided = len(planes)
     if num_planes_in_session == 1 and num_planes_provided == 1:
         if planes[0] not in planes_in_session:
-            logging.error(
+            logging.warning(
                 f"Provided plane {planes[0]} is not valid for session {session_id}."
             )
             return None
@@ -412,7 +412,7 @@ def run_decoding(
             )
     elif num_planes_in_session == 1 and num_planes_provided > 1:
         (
-            logging.error(
+            logging.warning(
                 f"{session_id}, {planes}: Only one plane in session, but multiple planes provided"
             )
             if log
@@ -436,7 +436,7 @@ def run_decoding(
     )  # Column 1 3p data are unduplicated
     if column == 1 and len(session.get_planes()) > 1:
         (
-            logging.info(
+            logging.warning(
                 f"{session_id}: This is a 2p session in column 1, all ROIs are duplicated. Skipping decoding."
             )
             if log
@@ -475,14 +475,14 @@ def run_decoding(
     file_name = os.path.join(decoding_folder_name, file_name)
 
     # Check if the decoding results df is already calculated and saved locally
-    # if os.path.isfile(file_name):
-    #     indiv_results_df = pd.read_pickle(file_name)
-    #     (
-    #         logging.info(f"{session_id}: Decoding results already exist. Returning df.")
-    #         if log
-    #         else None
-    #     )
-    #     return indiv_results_df
+    if os.path.isfile(file_name):
+        indiv_results_df = pd.read_pickle(file_name)
+        (
+            logging.info(f"{session_id}: Decoding results already exist. Returning df.")
+            if log
+            else None
+        )
+        return indiv_results_df
 
     ############################## Decoding starts here ##############################
     (
@@ -553,7 +553,7 @@ def run_decoding(
         return None
     if np.shape(X_data_training)[1] < bootstrap_size:
         (
-            logging.info(
+            logging.warning(
                 f"{session_id}: Not enough X_data for training, only have {np.shape(X_data_training)[1]} rois, cannot perform decoding"
             )
             if log
@@ -587,25 +587,25 @@ def run_decoding(
 
     # Subset the data so that both the training and testing data have the same directions / image indices
     if stimulus_type_training != stimulus_type_testing and match_trials:
-        (
-            logging.info(
-                f"{session_id}: Matching trials between training and testing data"
-            )
-            if log
-            else None
-        )
+        # (
+        #     logging.info(
+        #         f"{session_id}: Matching trials between training and testing data"
+        #     )
+        #     if log
+        #     else None
+        # )
         # Figure out which indices are in both y_data and y_data_other
         unique_trials_training = np.unique(Y_data_training)
         unique_trials_testing = np.unique(Y_data_testing)
         common_indices = np.intersect1d(unique_trials_training, unique_trials_testing)
 
-        (
-            logging.info(
-                f"{session_id}, {planes}: Original training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
-            )
-            if log
-            else None
-        )
+        # (
+        #     logging.info(
+        #         f"{session_id}, {planes}: Original training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
+        #     )
+        #     if log
+        #     else None
+        # )
 
         # Subset X_data and Y_data to only include common trial identities
         X_data_training = X_data_training[np.isin(Y_data_training, common_indices), :]
@@ -613,13 +613,13 @@ def run_decoding(
         Y_data_training = Y_data_training[np.isin(Y_data_training, common_indices)]
         Y_data_testing = Y_data_testing[np.isin(Y_data_testing, common_indices)]
 
-        (
-            logging.info(
-                f"{session_id}, {planes}: New training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
-            )
-            if log
-            else None
-        )
+        # (
+        #     logging.info(
+        #         f"{session_id}, {planes}: New training trials: {np.shape(X_data_training)}, {len(Y_data_training)} and testing trials: {np.shape(X_data_testing)}, {len(Y_data_testing)}"
+        #     )
+        #     if log
+        #     else None
+        # )
 
     all_val_accuracies, all_test_accuracies, all_best_ks = [], [], []
     all_shuf_val_accuracies, all_shuf_test_accuracies, all_shuf_best_ks = [], [], []
@@ -734,10 +734,6 @@ def run_decoding(
             del (val_accuracies, test_accuracies, best_ks)
 
     # Save info about recording + decoding #
-    # mouse_ids = np.tile(session.get_mouse_id(), chunk_range[1] - chunk_range[0])
-    # column_ids = np.tile(session.get_column_id(), chunk_range[1] - chunk_range[0])
-    # volume_ids = np.tile(session.get_volume_id(), chunk_range[1] - chunk_range[0])
-    # plane_ids = np.tile(planes, chunk_range[1] - chunk_range[0])
     repetition_nums = np.tile(np.arange(repetitions), chunk_range[1] - chunk_range[0])
 
     # Create a DataFrame to store the results
@@ -938,7 +934,7 @@ if __name__ == "__main__":
     )
 
     ## Apply multiprocessing to run decoding in parallel
-    Parallel(n_jobs=30)(
+    Parallel(n_jobs=25)(
         delayed(run_decoding)(
             session_id=session_id,
             planes=planes,
