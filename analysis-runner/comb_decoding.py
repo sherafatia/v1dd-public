@@ -934,7 +934,7 @@ if __name__ == "__main__":
     )
 
     ## Apply multiprocessing to run decoding in parallel
-    Parallel(n_jobs=25)(
+    Parallel(n_jobs=30)(
         delayed(run_decoding)(
             session_id=session_id,
             planes=planes,
