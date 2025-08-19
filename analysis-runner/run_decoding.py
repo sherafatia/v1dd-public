@@ -5,12 +5,11 @@ import numpy as np
 import pandas as pd
 from itertools import compress
 from v1dd_public import ARTIFACT_DIR
-from sklearn import metrics, preprocessing
+from sklearn import metrics
 from allen_v1dd.client import OPhysClient
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 
 import logging
@@ -229,18 +228,6 @@ def get_mean_dff_traces(
         ),
     )
     return mean_dff_traces_df
-
-
-def knn_cross_validation(max_neighbors, metric, X_data, Y_data):
-    cross_val_scores = []
-    possible_neighbors = np.arange(2, max_neighbors + 1, 1)
-    for k_neighbors in possible_neighbors:
-        knn = KNeighborsClassifier(n_neighbors=k_neighbors, metric=metric)
-        score = cross_val_score(knn, X_data, Y_data, cv=5)
-        cross_val_scores.append(np.mean(score))
-    best_k = possible_neighbors[np.argmax(cross_val_scores)]
-    knn = KNeighborsClassifier(n_neighbors=best_k, metric=metric)
-    return knn, best_k
 
 
 def get_X_data(
