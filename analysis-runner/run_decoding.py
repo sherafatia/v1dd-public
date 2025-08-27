@@ -370,9 +370,7 @@ def run_decoding(
     # Load the session using the client
     try:
         session = client.load_ophys_session(session_id)
-        # logging.info(f"{session_id}: Loaded") if log else None
-    except Exception as e:
-        logging.error(f"Error loading session {session_id}: {e}") if log else None
+    except:
         return None
 
     # Figure out chunk range if not given
