@@ -261,7 +261,7 @@ def get_X_data(
     return X_data_df.values
 
 
-def get_Y_data(session, plane, stimulus_type, decode_dim):
+def get_Y_data(session, plane, stimulus_type, decode_dim, time_fractions=None):
 
     stimulus_table, _ = session.get_stimulus_table(stimulus_type)
     stimulus_table = stimulus_table.dropna()
@@ -269,6 +269,15 @@ def get_Y_data(session, plane, stimulus_type, decode_dim):
         stimulus_table["end"]
         < session.get_traces(plane=plane, trace_type="dff").time.values[-1]
     ]
+
+    if decode_dim == "time":
+        assert (
+            time_fractions is not None
+        ), "time_fractions must be provided when decode_dim is 'time'"
+        np.floor(len(stimulus_table) * time_fractions)
+        return np.array(list(range(0, int(1 / time_fractions)))).repeat(
+            int(np.floor(len(stimulus_table) * time_fractions))
+        )  ## essentially bin trials into bins of time
 
     if "drifting_gratings" in stimulus_type:
         if ("direction" in decode_dim) & ("spatial" not in decode_dim):
@@ -360,6 +369,7 @@ def run_decoding(
     tag=None,
     log=True,
     match_trials=False,
+    time_fractions=None,
 ):
 
     ############################## Prior to decoding, perform initialization tests ##############################
@@ -554,9 +564,20 @@ def run_decoding(
         plane=planes[0],
         stimulus_type=stimulus_type_training,
         decode_dim=decode_dim,
+        time_fractions=time_fractions,
     )
     if Y_data_training is None:
         return None
+
+    if decode_dim == "time":
+        while Y_data_training.shape[0] != X_data_training.shape[0]:  # should be true
+            Y_data_training = np.append(
+                Y_data_training, int(1 / time_fractions)
+            )  # add a maximum of 4 values to the end to make it the same length as X_data
+
+    assert (
+        Y_data_training.shape[0] == X_data_training.shape[0]
+    ), "Y_data and X_data (training) must be the same length"
 
     if stimulus_type_testing == stimulus_type_training:
         Y_data_testing = None  # If training and testing stimulus types are the same, use the same Y_data
@@ -566,9 +587,18 @@ def run_decoding(
             plane=planes[0],
             stimulus_type=stimulus_type_testing,
             decode_dim=decode_dim,
+            time_fractions=time_fractions,
         )
         if Y_data_testing is None:
             return None
+        if decode_dim == "time":
+            while Y_data_testing.shape[0] != X_data_testing.shape[0]:  # should be true
+                Y_data_testing = np.append(
+                    Y_data_testing, int(1 / time_fractions)
+                )  # add a maximum of 4 values to the end to make it the same length as X_data
+            assert (
+                Y_data_testing.shape[0] == X_data_testing.shape[0]
+            ), "Y_data and X_data (testing) must be the same length"
 
     # Subset the data so that both the training and testing data have the same directions / image indices
     if stimulus_type_training != stimulus_type_testing and match_trials:
@@ -816,6 +846,11 @@ if __name__ == "__main__":
         action=argparse.BooleanOptionalAction,
         help="If provided, match trials between training and testing datasets",
     )
+    parser.add_argument(
+        "--decode_time",
+        action=argparse.BooleanOptionalAction,
+        help="If provided, decode time within a stimulus",
+    )
     args = parser.parse_args()
 
     # Set up logging
@@ -843,6 +878,12 @@ if __name__ == "__main__":
         "natural_images_12": "image_index",
         "natural_images": "image_index",
     }
+    if args.decode_time is not None:
+        decode_dims["drifting_gratings_full"] = "time"
+        decode_dims["drifting_gratings_windowed"] = "time"
+        decode_dims["natural_images_12"] = "time"
+        decode_dims["natural_images"] = "time"
+
     multi_stim_pairs = {
         "drifting_gratings_full": "drifting_gratings_windowed",
         "drifting_gratings_windowed": "drifting_gratings_full",
@@ -938,6 +979,7 @@ if __name__ == "__main__":
             tag=tag,
             log=True,
             match_trials=match_trials,
+            time_fractions=0.25 if args.decode_time is not None else None,
         )
         for session_id in client.get_all_session_ids()
         for planes in plane_list
