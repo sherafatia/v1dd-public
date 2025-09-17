@@ -370,6 +370,7 @@ def run_decoding(
     log=True,
     match_trials=False,
     time_fractions=None,
+    subset_ns2=False,
 ):
 
     ############################## Prior to decoding, perform initialization tests ##############################
@@ -470,14 +471,14 @@ def run_decoding(
     file_name = os.path.join(decoding_folder_name, file_name)
 
     # Check if the decoding results df is already calculated and saved locally
-    if os.path.isfile(file_name):
-        indiv_results_df = pd.read_pickle(file_name)
-        (
-            logging.info(f"{session_id}: Decoding results already exist. Returning df.")
-            if log
-            else None
-        )
-        return indiv_results_df
+    # if os.path.isfile(file_name):
+    #     indiv_results_df = pd.read_pickle(file_name)
+    #     (
+    #         logging.info(f"{session_id}: Decoding results already exist. Returning df.")
+    #         if log
+    #         else None
+    #     )
+    #     return indiv_results_df
 
     ############################## Decoding starts here ##############################
     (
@@ -635,6 +636,17 @@ def run_decoding(
         #     if log
         #     else None
         # )
+
+    # Subset NS Set 2 to the first 20% of trials
+    if subset_ns2 == True:
+        if stimulus_type_training == "natural_images_12":
+            X_data_training = X_data_training[
+                : int(np.shape(X_data_training)[0] * 0.2), :
+            ]
+            Y_data_training = Y_data_training[: int(len(Y_data_training) * 0.2)]
+        if stimulus_type_testing == "natural_images_12":
+            X_data_testing = X_data_testing[: int(np.shape(X_data_testing)[0] * 0.2), :]
+            Y_data_testing = Y_data_testing[: int(len(Y_data_testing) * 0.2)]
 
     all_val_accuracies, all_test_accuracies, all_best_ks = [], [], []
     all_shuf_val_accuracies, all_shuf_test_accuracies, all_shuf_best_ks = [], [], []
@@ -851,6 +863,11 @@ if __name__ == "__main__":
         action=argparse.BooleanOptionalAction,
         help="If provided, decode time within a stimulus",
     )
+    parser.add_argument(
+        "--subset_ns2",
+        action=argparse.BooleanOptionalAction,
+        help="Just use if train/testing on natural images and want to subset the NS2 test data to the first 20%",
+    )
     args = parser.parse_args()
 
     # Set up logging
@@ -903,6 +920,7 @@ if __name__ == "__main__":
     results_folder = f"{data_folder}/decoding_results"
     log = args.verbose
     match_trials = True if args.match_trials is not None else False
+    subset_ns2 = True if args.subset_ns2 is not None else False
 
     chunk_size = args.chunk_size
     if repetitions == 1:
@@ -980,6 +998,7 @@ if __name__ == "__main__":
             log=True,
             match_trials=match_trials,
             time_fractions=0.25 if args.decode_time is not None else None,
+            subset_ns2=subset_ns2,
         )
         for session_id in client.get_all_session_ids()
         for planes in plane_list
