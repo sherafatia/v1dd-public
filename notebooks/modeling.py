@@ -14,7 +14,7 @@ from tqdm.notebook import tqdm, trange # for Jupyter notebooks
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ConvNet(nn.Module):
-    def __init__(self, in_channels=3, height=16, width=16):
+    def __init__(self, in_channels=1, height=32, width=32):
         super(ConvNet, self).__init__()
 
         # Shared layers
@@ -31,13 +31,13 @@ class ConvNet(nn.Module):
         self.grating_head = nn.Sequential(
             nn.Linear(self.input_size, 128),
             nn.ReLU(),
-            nn.Linear(128, 10)  # 12 classes for gratings
+            nn.Linear(128, 10)  # 10 classes for gratings
         )
 
         self.natural_scene_head = nn.Sequential(
             nn.Linear(self.input_size, 128),
             nn.ReLU(),
-            nn.Linear(128, 10)  # 118 classes for natural scenes
+            nn.Linear(128, 10)  # 10 classes for natural scenes
         )
 
     def forward(self, x):
@@ -115,15 +115,26 @@ def add_noise_to_last_layer(model, noise_level=0.5):
     return model
 
     
-def train_model(model, dataloader, num_epochs=10):
+def train_model(model, train_loader, gabor_val_loader=None, cifar_val_loader=None, num_epochs=10):
     model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     losses = []
+    gabor_val_accuracies = []
+    cifar_val_accuracies = []
     for epoch in trange(num_epochs, desc='Epochs'):
         running_loss = 0.0
-        for i, data in tqdm(enumerate(dataloader), desc=f'Batches in epoch #{epoch+1}', leave=False, total=len(dataloader)):
+
+        if gabor_val_loader:
+            gabor_accuracy = evaluate_gabor_accuracy(model, gabor_val_loader)
+            gabor_val_accuracies.append(gabor_accuracy)
+
+        if cifar_val_loader:
+            cifar_accuracy = evaluate_cifar_accuracy(model, cifar_val_loader)
+            cifar_val_accuracies.append(cifar_accuracy)
+
+        for i, data in tqdm(enumerate(train_loader), desc=f'Batches in epoch #{epoch+1}', leave=False, total=len(train_loader)):
             inputs, labels = data
             inputs, labels = inputs.to(device), labels.to(device)
 
@@ -142,10 +153,10 @@ def train_model(model, dataloader, num_epochs=10):
             loss.backward()
             optimizer.step()
             running_loss += loss.item() if isinstance(loss, torch.Tensor) else loss
+        
+        losses.append(running_loss / len(train_loader))
 
-        losses.append(running_loss / len(dataloader))
-
-    return model, losses 
+    return model, losses, gabor_val_accuracies, cifar_val_accuracies
 
 def evaluate_gabor_accuracy(model, gabor_test_loader):
     """Evaluates the Gabor head."""
