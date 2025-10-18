@@ -141,18 +141,22 @@ class GaborDatasetNoisy(Dataset):
         orientation_jitter=0.1,
         frequency_jitter=0.01,
         sigma_range=(10, 20),
+        offset_jitter=5,
         seed=5,
     ):
         super().__init__()
         self.num_images = num_images
         self.img_size = img_size
         self.num_orientations = orientations
-        self.orientations = np.linspace(0, np.pi, orientations, endpoint=False)
+        self.orientations = np.linspace(
+            0, -np.pi, orientations, endpoint=False
+        )  # -np.pi because skimage's gabor_kernel uses a different convention
         self.frequencies = frequencies
         self.orientation_jitter = orientation_jitter
         self.frequency_jitter = frequency_jitter
         self.sigma_range = sigma_range
         self.noise_level = noise_level
+        self.offset_jitter = offset_jitter
 
         self.rng = np.random.default_rng(seed)
         random.seed(seed)
@@ -165,43 +169,54 @@ class GaborDatasetNoisy(Dataset):
             ]
         )
 
+        images = []
+        labels = []
+        for idx in range(self.num_images):
+            class_id = idx % self.num_orientations
+            base_orientation = self.orientations[class_id]
+            base_frequency = random.choice(self.frequencies)
+
+            jittered_orientation = base_orientation + self.rng.normal(
+                0, self.orientation_jitter
+            )
+            jittered_frequency = base_frequency + self.rng.normal(
+                0, self.frequency_jitter
+            )
+            sigma_x = self.rng.uniform(self.sigma_range[0], self.sigma_range[1])
+            sigma_y = self.rng.uniform(self.sigma_range[0], self.sigma_range[1])
+
+            kernel = np.real(
+                gabor_kernel(
+                    frequency=jittered_frequency,
+                    theta=jittered_orientation,
+                    sigma_x=sigma_x,
+                    sigma_y=sigma_y,
+                )
+            )
+            offset = random.randint(-self.offset_jitter, self.offset_jitter)
+            kernel = np.roll(kernel, shift=(offset, offset), axis=(0, 1))
+
+            kernel = (
+                (kernel - kernel.min()) / (kernel.max() - kernel.min()) * 255
+            )  # Normalize to [0, 255]
+            kernel = kernel.astype(np.uint8)
+            img = self.transform(Image.fromarray(kernel))
+            noise = torch.randn_like(img) * self.noise_level
+            img_noisy = img + noise
+
+            label = class_id + 10  # Adjust label to be in the range [10, 19]
+
+            images.append(img_noisy)
+            labels.append(label)
+
+        self.images = torch.stack(images)  # Shape: (num_images, 1, img_size, img_size)
+        self.labels = np.array(labels)  # Shape: (num_images,)
+
     def __len__(self):
         return self.num_images
 
     def __getitem__(self, idx):
-        class_id = idx % self.num_orientations
-        base_orientation = self.orientations[class_id]
-        base_frequency = random.choice(self.frequencies)
-
-        jittered_orientation = base_orientation + self.rng.normal(
-            0, self.orientation_jitter
-        )
-        jittered_frequency = base_frequency + self.rng.normal(0, self.frequency_jitter)
-        sigma_x = self.rng.uniform(self.sigma_range[0], self.sigma_range[1])
-        sigma_y = self.rng.uniform(self.sigma_range[0], self.sigma_range[1])
-        phase = self.rng.uniform(0, 2 * np.pi)
-
-        kernel = np.real(
-            gabor_kernel(
-                frequency=jittered_frequency,
-                theta=jittered_orientation,
-                sigma_x=sigma_x,
-                sigma_y=sigma_y,
-            )
-        )
-        offset = self.rng.randint(-5, 5)
-        kernel = np.roll(kernel, shift=(offset, offset), axis=(0, 1))
-
-        kernel = (
-            (kernel - kernel.min()) / (kernel.max() - kernel.min()) * 255
-        )  # Normalize to [0, 255]
-        kernel = kernel.astype(np.uint8)
-        img = self.transform(Image.fromarray(kernel))
-        noise = torch.randn_like(img) * self.noise_level
-        img_noisy = img + noise
-
-        label = class_id + 10  # Adjust label to be in the range [10, 19]
-        return img_noisy, label
+        return self.images[idx], self.labels[idx]
 
 
 # --- Noise injection function ---
@@ -232,6 +247,7 @@ def train_model(
     probe_size=256,
     val_dataset=None,
     num_epochs=10,
+    early_stopping=False,
     tag=None,
 ):
 
@@ -248,14 +264,105 @@ def train_model(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=num_epochs * len(train_loader), eta_min=1e-6
     )
-    alpha = 0.3
 
+    train_losses_epoch, val_losses_epoch = [], []
     train_losses, val_losses = [], []
     gabor_val_accuracies = []
     cifar_val_accuracies = []
     for epoch in trange(num_epochs, desc="Epochs"):
 
-        for _, data in tqdm(
+        running_val_loss = 0.0
+        combined_val_loader = DataLoader(
+            val_dataset, batch_size=batch_size, shuffle=True
+        )
+        with torch.no_grad():
+            for data in combined_val_loader:
+                images, labels = data
+                images, labels = images.to(device), labels.to(device)
+                out_grating, out_natural_scene = model(
+                    images
+                )  # Only use combined output
+
+                is_cifar = labels < 10
+                is_gabor = labels >= 10
+
+                val_loss = 0
+                if is_cifar.any():
+                    cifar_preds = out_natural_scene[is_cifar]
+                    cifar_labels = labels[is_cifar]
+                    val_loss += criterion(cifar_preds, cifar_labels)
+
+                if is_gabor.any():
+                    gabor_preds = out_grating[is_gabor]
+                    gabor_labels = labels[is_gabor] - 10
+                    val_loss += criterion(gabor_preds, gabor_labels)
+
+                running_val_loss += (
+                    val_loss.item() if isinstance(val_loss, torch.Tensor) else val_loss
+                )
+        val_losses_epoch.append(running_val_loss / len(combined_val_loader))
+        if epoch > 2 and early_stopping is True:
+            if val_losses_epoch[-1] > val_losses_epoch[-2] + 0.05:
+                print(
+                    "Early stopping triggered: validation loss increased significantly {:.4f} -> {:.4f}.".format(
+                        val_losses_epoch[-2], val_losses_epoch[-1]
+                    )
+                )
+                torch.save(
+                    model.state_dict(),
+                    f"./model_states/{tag}/model_epoch_{epoch+1}_best.pth",
+                )
+                df_losses = pd.DataFrame(
+                    {
+                        "train_loss": train_losses,
+                        "val_loss": val_losses,
+                        "gabor_val_accuracy": gabor_val_accuracies,
+                        "cifar_val_accuracy": cifar_val_accuracies,
+                    }
+                )
+                df_losses.to_csv(f"./model_states/losses_{tag}.csv", index=False)
+                return (
+                    model,
+                    train_losses,
+                    val_losses,
+                    train_losses_epoch,
+                    val_losses_epoch,
+                    gabor_val_accuracies,
+                    cifar_val_accuracies,
+                )
+
+        running_train_loss = 0.0
+        with torch.no_grad():
+            for data in train_loader:
+                images, labels = data
+                images, labels = images.to(device), labels.to(device)
+                out_grating, out_natural_scene = model(
+                    images
+                )  # Only use combined output
+
+                is_cifar = labels < 10
+                is_gabor = labels >= 10
+
+                train_loss = 0
+                if is_cifar.any():
+                    cifar_preds = out_natural_scene[is_cifar]
+                    cifar_labels = labels[is_cifar]
+                    train_loss += criterion(cifar_preds, cifar_labels)
+
+                if is_gabor.any():
+                    gabor_preds = out_grating[is_gabor]
+                    gabor_labels = labels[is_gabor] - 10
+                    train_loss += criterion(gabor_preds, gabor_labels)
+
+                running_train_loss += (
+                    train_loss.item()
+                    if isinstance(train_loss, torch.Tensor)
+                    else train_loss
+                )
+        train_losses_epoch.append(running_train_loss / len(train_loader))
+
+        running_training_loss = 0.0
+        for idx, data in tqdm(
             enumerate(train_loader),
             desc=f"Batches in epoch #{epoch+1}",
             leave=False,
@@ -272,11 +379,9 @@ def train_model(
 
             train_loss = 0
             if is_cifar.any():
-                train_loss += (1 - alpha) * criterion(
-                    out_natural_scene[is_cifar], labels[is_cifar]
-                )
+                train_loss += criterion(out_natural_scene[is_cifar], labels[is_cifar])
             if is_gabor.any():
-                train_loss += alpha * criterion(
+                train_loss += criterion(
                     out_grating[is_gabor], labels[is_gabor] - 10
                 )  # adjust labels for gabor
 
@@ -285,8 +390,9 @@ def train_model(
                 if isinstance(train_loss, torch.Tensor)
                 else train_loss
             )
+            running_training_loss += train_losses[-1]
 
-            running_loss = 0.0
+            probe_val_loss = 0.0
             if val_dataset is not None:
                 indices = torch.randperm(len(val_dataset))[
                     : min(probe_size, len(val_dataset))
@@ -313,9 +419,7 @@ def train_model(
                         if is_cifar.any():
                             cifar_preds = out_natural_scene[is_cifar]
                             cifar_labels = labels[is_cifar]
-                            val_loss += (1 - alpha) * criterion(
-                                cifar_preds, cifar_labels
-                            )
+                            val_loss += criterion(cifar_preds, cifar_labels)
                             _, predicted = torch.max(cifar_preds.data, 1)
                             total_cifar += cifar_labels.size(0)
                             correct_cifar += (predicted == cifar_labels).sum().item()
@@ -323,12 +427,12 @@ def train_model(
                         if is_gabor.any():
                             gabor_preds = out_grating[is_gabor]
                             gabor_labels = labels[is_gabor] - 10
-                            val_loss += alpha * criterion(gabor_preds, gabor_labels)
+                            val_loss += criterion(gabor_preds, gabor_labels)
                             _, predicted = torch.max(gabor_preds.data, 1)
                             total_gabor += gabor_labels.size(0)
                             correct_gabor += (predicted == gabor_labels).sum().item()
 
-                        running_loss += (
+                        probe_val_loss += (
                             val_loss.item()
                             if isinstance(val_loss, torch.Tensor)
                             else val_loss
@@ -341,13 +445,13 @@ def train_model(
                     100 * correct_gabor / total_gabor if total_gabor > 0 else 0
                 )
 
-                val_losses.append(running_loss / len(combined_val_loader))
+                val_losses.append(probe_val_loss / len(combined_val_loader))
 
                 ## check for early stopping
-                # if idx > 400 and val_losses is not None:
+                # if idx > 400 and early_stopping is True:
                 #     if (
                 #         np.median(val_losses[-200:])
-                #         > np.median(val_losses[-400:-200]) + 0.02
+                #         > np.median(val_losses[-400:-200]) + 0.06
                 #     ):
                 #         print("Early stopping triggered.")
                 #         torch.save(
@@ -373,9 +477,23 @@ def train_model(
                 #             cifar_val_accuracies,
                 #         )
 
+            # print(
+            #     f"Epoch [{epoch+1}/{num_epochs}], Batch [{idx+1}/{len(train_loader)}], "
+            #     f"Train Loss: {train_loss.item():.4f}, "
+            #     f"Val Loss: {running_loss / len(combined_val_loader) if val_dataset is not None else 'N/A':.4f}, "
+            #     f"Gabor Val Acc: {gabor_val_accuracies[-1] if val_dataset is not None else 'N/A':.2f}%, "
+            #     f"CIFAR Val Acc: {cifar_val_accuracies[-1] if val_dataset is not None else 'N/A':.2f}%"
+            # )
+
             train_loss.backward()
             optimizer.step()
             scheduler.step()
+
+        print(
+            f"Epoch [{epoch+1}/{num_epochs}]"
+            f"Training Loss: {train_losses_epoch[-1]:.4f}"
+            f"Validation Loss: {val_losses_epoch[-1]:.4f}"
+        )
 
         # clear and store model after each epoch
         torch.cuda.empty_cache()
@@ -394,7 +512,15 @@ def train_model(
     )
     df_losses.to_csv(f"./model_states/losses_{tag}.csv", index=False)
 
-    return model, train_losses, val_losses, gabor_val_accuracies, cifar_val_accuracies
+    return (
+        model,
+        train_losses,
+        val_losses,
+        train_losses_epoch,
+        val_losses_epoch,
+        gabor_val_accuracies,
+        cifar_val_accuracies,
+    )
 
 
 def evaluate_gabor_accuracy(model, gabor_test_loader):
