@@ -5,3 +5,6 @@
 *.eps
 *.log
 *.svg
+*.gz
+*.pth
+*batch*
