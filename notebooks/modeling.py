@@ -17,6 +17,18 @@ from tqdm.notebook import tqdm, trange  # for Jupyter notebooks
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+class NoisyIdentity(nn.Module):
+    def __init__(self, noise_level=0.1):
+        super(NoisyIdentity, self).__init__()
+        self.noise_level = noise_level
+
+    def forward(self, x):
+        if not self.training:
+            noise = torch.randn_like(x) * self.noise_level
+            return x + noise
+        else:
+            return x
+
 
 class ConvNet(nn.Module):
     def __init__(self, in_channels=1, height=32, width=32):
@@ -30,7 +42,7 @@ class ConvNet(nn.Module):
         self.conv2 = nn.Conv2d(
             16, 16, kernel_size=3, padding=1
         )  # outputs (batch, 16, height, width)
-        self.skip = nn.Identity()  # Placeholder for skip connection
+        self.skip = NoisyIdentity()  # Placeholder for skip connection
         self.pool = nn.MaxPool2d(2, 2)
 
         # Task-specific heads
@@ -220,15 +232,14 @@ class GaborDatasetNoisy(Dataset):
 
 
 # --- Noise injection function ---
-def add_noise_to_first_layer(model, noise_level=0.5):
-    """Injects Gaussian noise ONLY into the first layer."""
-    with torch.no_grad():
-        noise = (
-            torch.randn_like(model.conv1.weight.data) * noise_level
-        )  # returns tensor filled w/ random numbers from standard normal distribution * noise_level
-        model.conv1.weight.data += noise
-    return model
-
+# def add_noise_to_first_layer(model, noise_level=0.5):
+#     """Injects Gaussian noise ONLY into the first layer."""
+#     with torch.no_grad():
+#         noise = (
+#             torch.randn_like(model.conv1.weight.data) * noise_level
+#         )  # returns tensor filled w/ random numbers from standard normal distribution * noise_level
+#         model.conv1.weight.data += noise
+#     return model
 
 def add_noise_to_middle_layer(model, noise_level=0.5):
     """Injects Gaussian noise ONLY into the middle layer."""
@@ -446,44 +457,6 @@ def train_model(
                 )
 
                 val_losses.append(probe_val_loss / len(combined_val_loader))
-
-                ## check for early stopping
-                # if idx > 400 and early_stopping is True:
-                #     if (
-                #         np.median(val_losses[-200:])
-                #         > np.median(val_losses[-400:-200]) + 0.06
-                #     ):
-                #         print("Early stopping triggered.")
-                #         torch.save(
-                #             model.state_dict(),
-                #             f"./model_states/{tag}/model_epoch_{epoch+1}_best.pth",
-                #         )
-                #         df_losses = pd.DataFrame(
-                #             {
-                #                 "train_loss": train_losses,
-                #                 "val_loss": val_losses,
-                #                 "gabor_val_accuracy": gabor_val_accuracies,
-                #                 "cifar_val_accuracy": cifar_val_accuracies,
-                #             }
-                #         )
-                #         df_losses.to_csv(
-                #             f"./model_states/losses_{tag}.csv", index=False
-                #         )
-                #         return (
-                #             model,
-                #             train_losses,
-                #             val_losses,
-                #             gabor_val_accuracies,
-                #             cifar_val_accuracies,
-                #         )
-
-            # print(
-            #     f"Epoch [{epoch+1}/{num_epochs}], Batch [{idx+1}/{len(train_loader)}], "
-            #     f"Train Loss: {train_loss.item():.4f}, "
-            #     f"Val Loss: {running_loss / len(combined_val_loader) if val_dataset is not None else 'N/A':.4f}, "
-            #     f"Gabor Val Acc: {gabor_val_accuracies[-1] if val_dataset is not None else 'N/A':.2f}%, "
-            #     f"CIFAR Val Acc: {cifar_val_accuracies[-1] if val_dataset is not None else 'N/A':.2f}%"
-            # )
 
             train_loss.backward()
             optimizer.step()
