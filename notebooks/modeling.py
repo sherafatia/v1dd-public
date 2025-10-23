@@ -17,6 +17,7 @@ from tqdm.notebook import tqdm, trange  # for Jupyter notebooks
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class NoisyIdentity(nn.Module):
     def __init__(self, noise_level=0.1):
         super(NoisyIdentity, self).__init__()
@@ -65,6 +66,46 @@ class ConvNet(nn.Module):
         )  # Concatenate along channel dimension
         # out_conv3 = self.relu(self.conv3(out_concat))
         out_pool = self.pool(out_concat)
+        out_flat = out_pool.view(
+            x.size(0), self.input_size
+        )  # Flatten into shape (batch_size, input_size)
+
+        # Task-specific outputs
+        out_grating = self.grating_head(out_flat)
+        out_natural_scene = self.natural_scene_head(out_flat)
+
+        return out_grating, out_natural_scene
+
+
+class ConvNet_NoSkip(nn.Module):
+    def __init__(self, in_channels=1, height=32, width=32):
+        super(ConvNet_NoSkip, self).__init__()
+
+        # Shared layers
+        self.conv1 = nn.Conv2d(
+            in_channels, 16, kernel_size=3, padding=1
+        )  # takes input of size (batch, in_channels, height, width) and outputs (batch, 16, height, width)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv2d(
+            16, 16, kernel_size=3, padding=1
+        )  # outputs (batch, 16, height, width)
+        self.pool = nn.MaxPool2d(2, 2)
+
+        # Task-specific heads
+        self.input_size = int(
+            16 * height / 2 * width / 2
+        )  # Assuming input image size is 64x64
+        self.grating_head = nn.Linear(self.input_size, 10)  # 10 classes for gratings
+        self.natural_scene_head = nn.Linear(
+            self.input_size, 10
+        )  # 10 classes for natural scenes
+
+    def forward(self, x):
+
+        out_conv1 = self.relu(self.conv1(x))
+        out_conv2 = self.relu(self.conv2(out_conv1))
+
+        out_pool = self.pool(out_conv2)
         out_flat = out_pool.view(
             x.size(0), self.input_size
         )  # Flatten into shape (batch_size, input_size)
@@ -240,6 +281,7 @@ class GaborDatasetNoisy(Dataset):
 #         )  # returns tensor filled w/ random numbers from standard normal distribution * noise_level
 #         model.conv1.weight.data += noise
 #     return model
+
 
 def add_noise_to_middle_layer(model, noise_level=0.5):
     """Injects Gaussian noise ONLY into the middle layer."""
