@@ -1,5 +1,5 @@
 # v1dd_public
-This repository contains the code for reproducing the figures of the V1DD manuscript as of March 26 2025.
+This repository contains the code for reproducing the figures of the V1DD manuscript as of October 30 2025.
 
 
 Author: Arefeh Sherafati (arefesherafati@gmail.com), Naomi Donovan (naomi.donovan@ucsf.edu)
