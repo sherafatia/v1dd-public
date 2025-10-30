@@ -3,3 +3,9 @@
 *.h5
 *.pyc
 *.eps
+*.log
+*.svg
+*.gz
+*.pth
+*batch*
+*.whl
