@@ -62,10 +62,17 @@ Now you have all the outputs needed to run the notebooks for reproducing the man
 v1dd_figure1.ipynb
 v1dd_figure2.ipynb
 v1dd_figure3.ipynb
-v1dd_figure4.ipynb
-v1dd_figure5.ipynb
-v1dd_figure6_corrected.ipynb
-v1dd_figure7.ipynb
-v1dd_figure8.ipynb (supplementary figure 4 -- need to rename)
+v1dd_figure4.ipynb (includes code for supplementary figure 10)
+v1dd_figure5.ipynb (includes code for supplementary figures 13, 14)
 v1dd_supplementary_figure1.ipynb
+v1dd_supplementary_figure2.ipynb
+v1dd_supplementary_figure3.ipynb
+v1dd_supplementary_figure4.ipynb
+v1dd_supplementary_figure5.ipynb
+v1dd_supplementary_figure6.ipynb
+v1dd_supplementary_figure7.ipynb
+v1dd_supplementary_figure8.ipynb
+v1dd_supplementary_figure9.ipynb
+v1dd_supplementary_figure11.ipynb
+v1dd_supplementary_figure12.ipynb
 ```
