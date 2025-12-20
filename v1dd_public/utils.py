@@ -169,9 +169,11 @@ def calc_lsn_vals(
     traces = session.get_traces(plane, trace_type=trace_type)
     n_tot_pres = lsn.sweep_responses.shape[0]
     times = traces.indexes["time"]
-    dff = traces.values[lsn.is_roi_valid, :]
+    # dff = traces.values[lsn.is_roi_valid, :]
+    dff = traces.values[:, :]
     n_cells = dff.shape[0]
-    cell_indices = np.nonzero(lsn.is_roi_valid)[0]
+    # cell_indices = np.nonzero(lsn.is_roi_valid)[0]
+    cell_indices = np.arange(n_cells)
 
     lsn_vals = np.zeros([n_tot_pres, n_cells])
     tot_lsn_frames = 0
